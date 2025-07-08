@@ -11,13 +11,14 @@ class SVGRect : public SVGElement
 {
 private:
     svg::Point center;
-    float radius;
+    float width;
+    float height;
     Gdiplus::Color fillColor;
     Gdiplus::Color strokeColor;
     float strokeWidth;
 
 public:
-    SVGRect(const svg::Point& center, float radius,
+    SVGRect(const svg::Point& center, float width, float height,
         Gdiplus::Color fillColor,
         Gdiplus::Color strokeColor,
         float strokeWidth);
