@@ -1,16 +1,18 @@
 #ifndef SVGPATH_H
 #define SVGPATH_H
 
-#include <windows.h>
-#include <objidl.h>
-
-#include "SVGElement.h"
-#include <gdiplus.h>
 #include <string>
+#include "SVGElement.h"
+
+//  Forward declaration
+namespace Gdiplus {
+    class Color;
+    class Graphics;
+}
 
 class SVGPath : public SVGElement {
 private:
-    std::wstring d; 
+    std::wstring d;
     Gdiplus::Color fill;
     Gdiplus::Color stroke;
 
@@ -19,4 +21,4 @@ public:
     void render(Gdiplus::Graphics* graphics) override;
 };
 
-#endif
+#endif // SVGPATH_H

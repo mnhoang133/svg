@@ -1,14 +1,17 @@
-﻿#ifndef SVGEllipse_h
-#define SVGEllipse_h
+﻿#ifndef SVGELLIPSE_H
+#define SVGELLIPSE_H
 
-#include <windows.h>
-#include <objidl.h>
-#include <gdiplus.h>
+#include <string>
 #include "Point.h"
 #include "SVGElement.h"
 
-class SVGEllipse : public SVGElement
-{
+//  Forward declare thay vì include nguyên <gdiplus.h>
+namespace Gdiplus {
+	class Color;
+	class Graphics;
+}
+
+class SVGEllipse : public SVGElement {
 private:
 	svg::Point center;
 	float radiusX;
@@ -23,7 +26,7 @@ public:
 		Gdiplus::Color strokeColor,
 		float strokeWidth);
 
-	void render(Gdiplus::Graphics* graphics) override; // Hàm dùng để làm hình này chồng lên hình khác
+	void render(Gdiplus::Graphics* graphics) override;
 };
 
 #endif

@@ -1,4 +1,4 @@
-#include "stdafx.h"
+﻿#include "stdafx.h"
 #include "SVGRect.h"
 #include "Point.h"
 
@@ -7,7 +7,8 @@ using namespace Gdiplus;
 SVGRect::SVGRect(const svg::Point& center, float width, float height,
     Gdiplus::Color fillColor, Gdiplus::Color strokeColor, float strokeWidth)
     : center(center), width(width), height(height),
-    fillColor(fillColor), strokeColor(strokeColor), strokeWidth(strokeWidth) {}
+    fillColor(fillColor), strokeColor(strokeColor), strokeWidth(strokeWidth) {
+}
 
 void SVGRect::render(Gdiplus::Graphics* graphics) {
     Gdiplus::SolidBrush brush(fillColor);

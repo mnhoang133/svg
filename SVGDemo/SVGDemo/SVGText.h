@@ -1,13 +1,15 @@
 #ifndef SVGTEXT_H
 #define SVGTEXT_H
 
-#include <windows.h>
-#include <objidl.h>
-
+#include <string>
 #include "SVGElement.h"
 #include "Point.h"
-#include <gdiplus.h>
-#include <string>
+
+//  Forward declaration GDI+ types
+namespace Gdiplus {
+    class Graphics;
+    class Color;
+}
 
 class SVGText : public SVGElement {
 private:
@@ -18,11 +20,11 @@ private:
 
 public:
     SVGText(const svg::Point& position,
-            const std::wstring& content,
-            int fontSize,
-            Gdiplus::Color fillColor);
+        const std::wstring& content,
+        int fontSize,
+        Gdiplus::Color fillColor);
 
     void render(Gdiplus::Graphics* graphics) override;
 };
 
-#endif
+#endif // SVGTEXT_H

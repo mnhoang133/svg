@@ -4,6 +4,11 @@
 #include "SVGElement.h"
 #include <vector>
 
+//  Forward declare Graphics vì chỉ dùng pointer
+namespace Gdiplus {
+    class Graphics;
+}
+
 class SVGGroup : public SVGElement {
 private:
     std::vector<SVGElement*> children;
@@ -22,4 +27,4 @@ public:
     ~SVGGroup();
 };
 
-#endif
+#endif // SVGGROUP_H

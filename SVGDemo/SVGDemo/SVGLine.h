@@ -1,24 +1,22 @@
-#ifndef SVGLine_h
-#define SVGLine_h
+﻿#ifndef SVGLINE_H
+#define SVGLINE_H
 
 #include <windows.h>
 #include <objidl.h>
 #include <gdiplus.h>
-#include <vector>
 #include "Point.h"
 #include "SVGElement.h"
 
-class SVGPolygon : public SVGElement
+class SVGLine : public SVGElement
 {
 private:
-    std::vector<svg::Point> points;
-    Gdiplus::Color fillColor;
+    svg::Point p1, p2;
     Gdiplus::Color strokeColor;
     float strokeWidth;
 
 public:
-    SVGPolygon(const std::vector<svg::Point>& points,
-        Gdiplus::Color fillColor,
+    SVGLine(const svg::Point& p1,
+        const svg::Point& p2,
         Gdiplus::Color strokeColor,
         float strokeWidth);
 

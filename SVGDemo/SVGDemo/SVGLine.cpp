@@ -1,24 +1,16 @@
-#include "stdafx.h"
+﻿#include "stdafx.h"
 #include "SVGLine.h"
 
 using namespace Gdiplus;
 
-SVGPolygon::SVGPolygon(const std::vector<svg::Point>& points,
-    Gdiplus::Color fillColor,
+SVGLine::SVGLine(const svg::Point& p1,
+    const svg::Point& p2,
     Gdiplus::Color strokeColor,
     float strokeWidth)
-    : points(points), fillColor(fillColor), strokeColor(strokeColor), strokeWidth(strokeWidth) {}
+    : p1(p1), p2(p2), strokeColor(strokeColor), strokeWidth(strokeWidth) {
+}
 
-void SVGPolygon::render(Gdiplus::Graphics* graphics) {
-    if (points.size() < 3) return;
-
-    std::vector<Gdiplus::PointF> gdiPoints;
-    for (const auto& p : points)
-        gdiPoints.emplace_back(Gdiplus::PointF(p.x, p.y));
-
-    Gdiplus::SolidBrush brush(fillColor);
-    Gdiplus::Pen pen(strokeColor, strokeWidth);
-
-    graphics->FillPolygon(&brush, gdiPoints.data(), gdiPoints.size());
-    graphics->DrawPolygon(&pen, gdiPoints.data(), gdiPoints.size());
+void SVGLine::render(Graphics* graphics) {
+    Pen pen(strokeColor, strokeWidth);
+    graphics->DrawLine(&pen, p1.x, p1.y, p2.x, p2.y);
 }
