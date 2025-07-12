@@ -1,4 +1,4 @@
-﻿#include "stdafx.h"             //  Luôn để đầu tiên nếu dùng precompiled header
+﻿#include "stdafx.h"             //  Luon de dau tien neu dung precompiled header
 
 #include <sstream>
 #include "SVGPath.h"
@@ -8,59 +8,65 @@
 
 using namespace Gdiplus;
 
+// Ham khoi tao, luu du lieu duong dan SVG va mau fill/stroke
 SVGPath::SVGPath(const std::wstring& d, Color fill, Color stroke)
-    : d(d), fill(fill), stroke(stroke) {}
+    : d(d), fill(fill), stroke(stroke) {
+}
 
+// Ve path len Graphics* su dung GraphicsPath
 void SVGPath::render(Graphics* graphics) {
     if (!graphics) return;
 
     GraphicsPath path;
-    std::wistringstream iss(d);
+    std::wistringstream iss(d);     // Stream du lieu path SVG (thuong tu thuoc tinh d)
     std::wstring token;
 
-    wchar_t cmd = 0;
-    float x = 0, y = 0;
+    wchar_t cmd = 0;                // Lenh SVG dang duoc xu ly (M, L, H, V, Z...)
+    float x = 0, y = 0;             // Toa do hien tai
 
+    // Duyet tung token trong chuoi d
     while (iss >> token) {
         if (iswalpha(token[0])) {
-            cmd = token[0];
+            cmd = token[0];         // Neu la ky tu chu cai thi la lenh SVG
         }
         else {
-            float x1 = std::stof(token);
+            float x1 = std::stof(token);   // Chuyen doi token thanh so thuc
             float y1;
-            if (!(iss >> y1)) break;
+            if (!(iss >> y1)) break;       // Lay them y1, neu khong co thi dung lai
 
+            // Xu ly theo lenh SVG
             switch (cmd) {
-            case 'M': case 'm':
+            case 'M': case 'm':            // MoveTo
                 path.StartFigure();
                 x = x1;
                 y = y1;
                 break;
-            case 'L': case 'l':
+            case 'L': case 'l':            // LineTo
                 path.AddLine(x, y, x1, y1);
                 x = x1;
                 y = y1;
                 break;
-            case 'H': case 'h':
+            case 'H': case 'h':            // Horizontal line
                 path.AddLine(x, y, x1, y);
                 x = x1;
                 break;
-            case 'V': case 'v':
+            case 'V': case 'v':            // Vertical line
                 path.AddLine(x, y, x, x1);
                 y = x1;
                 break;
             }
         }
 
-        // Handle Z/z to close path
+        // Neu gap lenh Z/z thi dong path lai
         if (cmd == 'Z' || cmd == 'z') {
             path.CloseFigure();
         }
     }
 
+    // Tao brush va pen de to va ve path
     SolidBrush brush(fill);
-    Pen pen(stroke, 2.0f);
+    Pen pen(stroke, 2.0f);              // Stroke width co dinh la 2.0f
 
-    graphics->FillPath(&brush, &path);
-    graphics->DrawPath(&pen, &path);
+    graphics->FillPath(&brush, &path);  // To mau ben trong path
+    graphics->DrawPath(&pen, &path);    // Ve duong vien path
 }
