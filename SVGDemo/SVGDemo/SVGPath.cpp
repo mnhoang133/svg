@@ -5,6 +5,7 @@
 #include <windows.h>
 #include <objidl.h>
 #include <gdiplus.h>
+#include <vector>
 
 using namespace Gdiplus;
 
@@ -18,55 +19,96 @@ void SVGPath::render(Graphics* graphics) {
     if (!graphics) return;
 
     GraphicsPath path;
-    std::wistringstream iss(d);     // Stream du lieu path SVG (thuong tu thuoc tinh d)
+    std::wistringstream iss(d);
     std::wstring token;
+    wchar_t cmd = 0;
 
-    wchar_t cmd = 0;                // Lenh SVG dang duoc xu ly (M, L, H, V, Z...)
-    float x = 0, y = 0;             // Toa do hien tai
+    float x = 0, y = 0;           // current point
+    float startX = 0, startY = 0; // start point of current subpath
 
-    // Duyet tung token trong chuoi d
     while (iss >> token) {
         if (iswalpha(token[0])) {
-            cmd = token[0];         // Neu la ky tu chu cai thi la lenh SVG
+            cmd = token[0];
         }
         else {
-            float x1 = std::stof(token);   // Chuyen doi token thanh so thuc
-            float y1;
-            if (!(iss >> y1)) break;       // Lay them y1, neu khong co thi dung lai
+            // Put token back into stream and parse based on command
+            iss.putback(L' ');
+            for (int i = token.size() - 1; i >= 0; --i) {
+                iss.putback(token[i]);
+            }
 
-            // Xu ly theo lenh SVG
             switch (cmd) {
-            case 'M': case 'm':            // MoveTo
-                path.StartFigure();
+            case 'M':
+            {
+                float x1, y1;
+                iss >> x1;
+                if (iss.peek() == ',') iss.get();
+                iss >> y1;
                 x = x1;
                 y = y1;
+                path.StartFigure();
+                startX = x;
+                startY = y;
                 break;
-            case 'L': case 'l':            // LineTo
+            }
+            case 'L':
+            {
+                float x1, y1;
+                iss >> x1;
+                if (iss.peek() == ',') iss.get();
+                iss >> y1;
                 path.AddLine(x, y, x1, y1);
                 x = x1;
                 y = y1;
                 break;
-            case 'H': case 'h':            // Horizontal line
+            }
+            case 'H':
+            {
+                float x1;
+                iss >> x1;
                 path.AddLine(x, y, x1, y);
                 x = x1;
                 break;
-            case 'V': case 'v':            // Vertical line
-                path.AddLine(x, y, x, x1);
-                y = x1;
+            }
+            case 'V':
+            {
+                float y1;
+                iss >> y1;
+                path.AddLine(x, y, x, y1);
+                y = y1;
                 break;
             }
-        }
+            case 'Z': case 'z':
+                path.CloseFigure();
+                x = startX;
+                y = startY;
+                break;
+            case 'C':
+            {
+                float x1, y1, x2, y2, x3, y3;
+                iss >> x1;
+                if (iss.peek() == ',') iss.get();
+                iss >> y1;
+                iss >> x2;
+                if (iss.peek() == ',') iss.get();
+                iss >> y2;
+                iss >> x3;
+                if (iss.peek() == ',') iss.get();
+                iss >> y3;
 
-        // Neu gap lenh Z/z thi dong path lai
-        if (cmd == 'Z' || cmd == 'z') {
-            path.CloseFigure();
+                path.AddBezier(x, y, x1, y1, x2, y2, x3, y3);
+                x = x3;
+                y = y3;
+                break;
+            }
+            }
         }
     }
 
-    // Tao brush va pen de to va ve path
     SolidBrush brush(fill);
-    Pen pen(stroke, 2.0f);              // Stroke width co dinh la 2.0f
-
-    graphics->FillPath(&brush, &path);  // To mau ben trong path
-    graphics->DrawPath(&pen, &path);    // Ve duong vien path
+    Pen pen(stroke, 2.0f);
+    graphics->FillPath(&brush, &path);
+    graphics->DrawPath(&pen, &path);
 }
+
+
