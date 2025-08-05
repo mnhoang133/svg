@@ -155,6 +155,7 @@
     <ClInclude Include="SVGDemo.h" />
     <ClInclude Include="SVGElement.h" />
     <ClInclude Include="SVGEllipse.h" />
+    <ClInclude Include="SVGG.h" />
     <ClInclude Include="SVGGroup.h" />
     <ClInclude Include="SVGLine.h" />
     <ClInclude Include="SVGParser.h" />
@@ -175,6 +176,7 @@
     <ClCompile Include="SVGCircle.cpp" />
     <ClCompile Include="SVGDemo.cpp" />
     <ClCompile Include="SVGEllipse.cpp" />
+    <ClCompile Include="SVGG.cpp" />
     <ClCompile Include="SVGGroup.cpp" />
     <ClCompile Include="SVGLine.cpp" />
     <ClCompile Include="SVGParser.cpp" />

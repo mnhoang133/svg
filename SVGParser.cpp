@@ -98,15 +98,7 @@ SVGElement* SVGParser::parseRect(const std::string& line) {
     Color stroke = strokeStr.empty() || strokeStr == "none" ? Color(0, 0, 0, 0) : applyOpacity(parseColor(strokeStr), strokeOpacity);
 
     svg::Point center = { x + width / 2.0f, y + height / 2.0f };
-    auto* rect = new SVGRect(center, width, height, fill, stroke, strokeWidth);
-
-    //transform
-    std::string transformStr = extractAttr(line, "transform");
-    if (!transformStr.empty())
-    {
-        rect->setTransform(std::wstring(transformStr.begin(), transformStr.end()));
-    }
-    return rect;
+    return new SVGRect(center, width, height, fill, stroke, strokeWidth);
 }
 
 // Parse the <circle> tag thanh doi tuong SVGCircle
@@ -127,14 +119,7 @@ SVGElement* SVGParser::parseCircle(const std::string& line) {
     Color fill = fillStr.empty() || fillStr == "none" ? Color(0, 0, 0, 0) : applyOpacity(parseColor(fillStr), fillOpacity);
     Color stroke = strokeStr.empty() || strokeStr == "none" ? Color(0, 0, 0, 0) : applyOpacity(parseColor(strokeStr), strokeOpacity);
 
-    auto* circle = new SVGCircle({ cx, cy }, r, fill, stroke, strokeWidth);
-
-    std::string transformStr = extractAttr(line, "transform");
-    if (!transformStr.empty())
-    {
-        circle->setTransform(std::wstring(transformStr.begin(), transformStr.end()));
-    }
-    return circle;
+    return new SVGCircle({ cx, cy }, r, fill, stroke, strokeWidth);
 }
 
 // Parse the <ellipse> tag thanh doi tuong SVGEllipse
@@ -156,14 +141,7 @@ SVGElement* SVGParser::parseEllipse(const std::string& line) {
     Color fill = fillStr.empty() || fillStr == "none" ? Color(0, 0, 0, 0) : applyOpacity(parseColor(fillStr), fillOpacity);
     Color stroke = strokeStr.empty() || strokeStr == "none" ? Color(0, 0, 0, 0) : applyOpacity(parseColor(strokeStr), strokeOpacity);
 
-    auto* ellipse = new SVGEllipse({ cx, cy }, rx, ry, fill, stroke, strokeWidth);
-
-    std::string transformStr = extractAttr(line, "transform");
-    if (!transformStr.empty())
-    {
-        ellipse->setTransform(std::wstring(transformStr.begin(), transformStr.end()));
-    }
-    return ellipse;
+    return new SVGEllipse({ cx, cy }, rx, ry, fill, stroke, strokeWidth);
 }
 
 // Parse the <line> tag thanh doi tuong SVGLine
@@ -178,15 +156,8 @@ SVGElement* SVGParser::parseLine(const std::string& line) {
     std::string strokeOpStr = extractAttr(line, "stroke-opacity");
     float strokeOpacity = strokeOpStr.empty() ? 1.0f : std::stof(strokeOpStr);
     Color stroke = strokeStr.empty() || strokeStr == "none" ? Color(0, 0, 0, 0) : applyOpacity(parseColor(strokeStr), strokeOpacity);
-    //tránh đặt là line để tránh trùng với line tham chiếu vào
-    auto* svgline = new SVGLine({ x1, y1 }, { x2, y2 }, stroke, strokeWidth);
 
-    std::string transformStr = extractAttr(line, "transform");
-    if (!transformStr.empty())
-    {
-        svgline->setTransform(std::wstring(transformStr.begin(), transformStr.end()));
-    }
-    return svgline;
+    return new SVGLine({ x1, y1 }, { x2, y2 }, stroke, strokeWidth);
 }
 
 // Parse the <polyline> tag thanh doi tuong SVGPolyline
@@ -239,14 +210,7 @@ SVGElement* SVGParser::parsePolyline(const std::string& line) {
         }
     }
 
-    auto* polyline = new SVGPolyline(points, stroke, strokeWidth, fill);
-
-    std::string transformStr = extractAttr(line, "transform");
-    if (!transformStr.empty())
-    {
-        polyline->setTransform(std::wstring(transformStr.begin(), transformStr.end()));
-    }
-    return polyline;
+    return new SVGPolyline(points, stroke, strokeWidth, fill);
 }
 
 // Parse the <polygon> tag thanh SVGPolygon
@@ -278,14 +242,7 @@ SVGElement* SVGParser::parsePolygon(const std::string& line) {
         }
     }
 
-    auto* polygon = new SVGPolygon(points, fill, stroke, strokeWidth);
-
-    std::string transformStr = extractAttr(line, "transform");
-    if (!transformStr.empty())
-    {
-        polygon->setTransform(std::wstring(transformStr.begin(), transformStr.end()));
-    }
-    return polygon;
+    return new SVGPolygon(points, fill, stroke, strokeWidth);
 }
 
 // Parse the <text> tag thanh SVGText
@@ -306,14 +263,7 @@ SVGElement* SVGParser::parseText(const std::string& line) {
     std::string content = (start != std::string::npos && end != std::string::npos) ? line.substr(start + 1, end - start - 1) : "";
 
     std::wstring wcontent(content.begin(), content.end());
-    auto* text = new SVGText({ x, y }, wcontent, fontSize, fill);
-
-    std::string transformStr = extractAttr(line, "transform");
-    if (!transformStr.empty())
-    {
-        text->setTransform(std::wstring(transformStr.begin(), transformStr.end()));
-    }
-    return text;
+    return new SVGText({ x, y }, wcontent, fontSize, fill);
 }
 
 // Parse the <path> tag thanh SVGPath
@@ -330,14 +280,7 @@ SVGElement* SVGParser::parsePath(const std::string& line) {
     Color fill = fillStr.empty() || fillStr == "none" ? Color(0, 0, 0, 0) : applyOpacity(parseColor(fillStr), fillOpacity);
     Color stroke = strokeStr.empty() || strokeStr == "none" ? Color(0, 0, 0, 0) : applyOpacity(parseColor(strokeStr), strokeOpacity);
 
-    auto* path = new SVGPath(std::wstring(d.begin(), d.end()), fill, stroke);
-
-    std::string transformStr = extractAttr(line, "transform");
-    if (!transformStr.empty())
-    {
-        path->setTransform(std::wstring(transformStr.begin(), transformStr.end()));
-    }
-    return path;
+    return new SVGPath(std::wstring(d.begin(), d.end()), fill, stroke);
 }
 
 // Doc file SVG tu ten file va parse cac shape vao mot SVGGroup
