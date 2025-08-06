@@ -125,75 +125,72 @@ float SVGParser::parseStyleFloat(const std::string& styleStr, const std::string&
     return defaultValue;
 }
 
-std::string extractOpeningTag(const std::string& line) {
-    std::smatch match;
-    std::regex pattern(R"(<\s*([^\s>/]+)[^>]*>)");
-    if (std::regex_search(line, match, pattern)) {
-        return match.str(0);
-    }
-    return "";
+std::string extractOpeningTag(const std::string& block) {
+    size_t start = block.find('<');
+    size_t end = block.find('>');
+    if (start == std::string::npos || end == std::string::npos || end <= start)
+        return "";
+    return block.substr(start, end - start + 1);
 }
 
-std::string extractInnerContent(const std::string& line) {
-    size_t openEnd = line.find('>');
-    size_t closeStart = line.rfind('<');
-    if (openEnd != std::string::npos && closeStart != std::string::npos && closeStart > openEnd) {
-        return line.substr(openEnd + 1, closeStart - openEnd - 1);
-    }
-    return "";
+std::string extractInnerContent(const std::string& block) {
+    size_t start = block.find('>');
+    size_t end = block.rfind("</g>");
+    if (start == std::string::npos || end == std::string::npos || end <= start)
+        return "";
+    return block.substr(start + 1, end - start - 1);
 }
 
-std::vector<std::string> extractChildElements(const std::string& content) {
-    std::vector<std::string> children;
+std::vector<std::string> extractChildElements(const std::string& innerContent) {
+    std::vector<std::string> result;
     size_t pos = 0;
-    int depth = 0;
-    size_t start = 0;
-    bool inTag = false;
+    while (pos < innerContent.size()) {
+        // Tìm tag mở
+        size_t tagStart = innerContent.find('<', pos);
+        if (tagStart == std::string::npos) break;
 
-    while (pos < content.size()) {
-        if (content[pos] == '<') {
-            if (content.compare(pos, 2, "</") == 0) {
-                depth--;
-                if (depth == 0 && inTag) {
-                    size_t end = content.find('>', pos);
-                    if (end != std::string::npos) {
-                        children.push_back(content.substr(start, end - start + 1));
-                        inTag = false;
-                        pos = end;
-                    }
-                }
-            }
-            else if (content.compare(pos, 2, "<g") == 0 || content.compare(pos, 1, "<") == 0) {
-                if (depth == 0) {
-                    start = pos;
-                    inTag = true;
-                }
-                size_t closePos = content.substr(pos).find('>');
-                if (closePos != std::string::npos && content[pos + closePos - 1] != '/')
-                    depth++;
-            }
+        // Lấy tên tag
+        size_t tagNameStart = tagStart + 1;
+        while (tagNameStart < innerContent.size() && isspace(innerContent[tagNameStart])) tagNameStart++;
+        size_t tagNameEnd = tagNameStart;
+        while (tagNameEnd < innerContent.size() && isalpha(innerContent[tagNameEnd])) tagNameEnd++;
+        std::string tagName = innerContent.substr(tagNameStart, tagNameEnd - tagNameStart);
+        if (tagName.empty()) break;
+
+        // Tìm tag đóng hoặc tự đóng
+        size_t tagEnd = innerContent.find('>', tagNameEnd);
+        if (tagEnd == std::string::npos) break;
+
+        // Kiểm tra tự đóng
+        bool isSelfClose = (innerContent[tagEnd - 1] == '/');
+        if (isSelfClose) {
+            // Thẻ tự đóng <rect .../> <circle .../> ...
+            result.push_back(innerContent.substr(tagStart, tagEnd - tagStart + 1));
+            pos = tagEnd + 1;
         }
-        pos++;
+        else {
+            // Thẻ <g> ... </g> hoặc <rect>...</rect>
+            std::string closeTag = "</" + tagName + ">";
+            size_t closeTagPos = innerContent.find(closeTag, tagEnd);
+            if (closeTagPos == std::string::npos) break;
+            result.push_back(innerContent.substr(tagStart, closeTagPos + closeTag.size() - tagStart));
+            pos = closeTagPos + closeTag.size();
+        }
     }
 
-    return children;
+    return result;
 }
 
-std::string readFullGBlock(std::ifstream& file, std::string currentLine) {
-    std::string content = currentLine + "\n";
-    int openTags = 0;
-
-    if (currentLine.find("<g") != std::string::npos) openTags++;
-    if (currentLine.find("</g>") != std::string::npos) openTags--;
-
+std::string readFullGBlock(std::ifstream& file, const std::string& firstLine) {
+    std::string block = firstLine + "\n";
+    int depth = 1;
     std::string line;
-    while (openTags > 0 && std::getline(file, line)) {
-        content += line + "\n";
-        if (line.find("<g") != std::string::npos) openTags++;
-        if (line.find("</g>") != std::string::npos) openTags--;
+    while (depth > 0 && std::getline(file, line)) {
+        block += line + "\n";
+        if (line.find("<g") != std::string::npos) depth++;
+        if (line.find("</g>") != std::string::npos) depth--;
     }
-
-    return content;
+    return block;
 }
 
 std::string SVGParser::mergeAttributes(const std::string& parentTag, const std::string& childTag) {
@@ -497,6 +494,8 @@ SVGElement* SVGParser::parseG(const std::string& block) {
     }
 
     auto children = extractChildElements(innerContent);
+
+
     for (const auto& child : children) {
         SVGElement* elem = nullptr;
         if (child.find("<g") != std::string::npos)
@@ -528,23 +527,32 @@ SVGElement* SVGParser::parseG(const std::string& block) {
 
 // Doc file SVG tu ten file va parse cac shape vao mot SVGGroup
 SVGGroup* SVGParser::parseFile(const std::string& filename) {
-    auto* group = new SVGGroup({});
     std::ifstream file(filename);
-    std::string line;
+    if (!file.is_open()) return nullptr;
 
-    if (!file.is_open()) {
-        std::cerr << " Failed to open file: " << filename << '\n';
-        return group;
-    }
+    // Đọc toàn bộ file vào một string
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    std::string svgContent = buffer.str();
 
-    // Nếu file có BOM, bỏ qua BOM
-    if (file.peek() == 0xEF) {
-        char bom[3];
-        file.read(bom, 3);
-    }
+    // Xóa BOM nếu có
+    if (svgContent.size() >= 3 &&
+        (unsigned char)svgContent[0] == 0xEF &&
+        (unsigned char)svgContent[1] == 0xBB &&
+        (unsigned char)svgContent[2] == 0xBF)
+        svgContent = svgContent.substr(3);
 
-    while (std::getline(file, line)) {
-        line.erase(0, line.find_first_not_of(" \t\r\n"));
+    SVGGroup* group = new SVGGroup({});
+
+    // Regex tách từng shape chính, dùng non-greedy để tách đúng từng thẻ
+    std::regex tagRegex(R"((<rect[\s\S]*?\/?>)|(<circle[\s\S]*?\/?>)|(<ellipse[\s\S]*?\/?>)|(<line[\s\S]*?\/?>)|(<text[\s\S]*?<\/text>)|(<path[\s\S]*?\/?>)|(<polyline[\s\S]*?\/?>)|(<polygon[\s\S]*?\/?>)|(<g[\s\S]*?<\/g>))");
+    auto tagsBegin = std::sregex_iterator(svgContent.begin(), svgContent.end(), tagRegex);
+    auto tagsEnd = std::sregex_iterator();
+
+    for (auto it = tagsBegin; it != tagsEnd; ++it) {
+
+
+        std::string line = it->str();
         if (line.find("<circle") != std::string::npos)
             group->addElement(parseCircle(line));
         else if (line.find("<rect") != std::string::npos)
@@ -557,15 +565,13 @@ SVGGroup* SVGParser::parseFile(const std::string& filename) {
             group->addElement(parseText(line));
         else if (line.find("<path") != std::string::npos)
             group->addElement(parsePath(line));
-        else if (line.find("polyline") != std::string::npos)
+        else if (line.find("<polyline") != std::string::npos)
             group->addElement(parsePolyline(line));
         else if (line.find("<polygon") != std::string::npos)
             group->addElement(parsePolygon(line));
         else if (line.find("<g") != std::string::npos)
-        {
-            std::string fullContent = readFullGBlock(file, line);
-            group->addElement(parseG(fullContent));
-        }
+            group->addElement(parseG(line));
     }
+
     return group;
 }
