@@ -4,7 +4,6 @@
 #include <string>
 #include "SVGElement.h"
 
-//  Forward declaration
 namespace Gdiplus {
     class Color;
     class Graphics;
@@ -15,9 +14,16 @@ private:
     std::wstring d;
     Gdiplus::Color fill;
     Gdiplus::Color stroke;
+    float strokeWidth;
+    bool doFill;
 
 public:
-    SVGPath(const std::wstring& d, Gdiplus::Color fill, Gdiplus::Color stroke);
+    SVGPath(const std::wstring& d,
+        Gdiplus::Color fill,
+        Gdiplus::Color stroke,
+        float strokeWidth = 1.0f,
+        bool fillEnabled = true);
+
     void render(Gdiplus::Graphics* graphics) override;
 };
 
