@@ -323,20 +323,28 @@ SVGElement* SVGParser::parsePath(const std::string& line) {
     std::string strokeStr = extractAttr(line, "stroke");
     std::string fillOpStr = extractAttr(line, "fill-opacity");
     std::string strokeOpStr = extractAttr(line, "stroke-opacity");
+    std::string strokeWidthStr = extractAttr(line, "stroke-width");
 
     float fillOpacity = fillOpStr.empty() ? 1.0f : std::stof(fillOpStr);
     float strokeOpacity = strokeOpStr.empty() ? 1.0f : std::stof(strokeOpStr);
+    float strokeWidth = strokeWidthStr.empty() ? 1.0f : std::stof(strokeWidthStr);
 
-    Color fill = fillStr.empty() || fillStr == "none" ? Color(0, 0, 0, 0) : applyOpacity(parseColor(fillStr), fillOpacity);
-    Color stroke = strokeStr.empty() || strokeStr == "none" ? Color(0, 0, 0, 0) : applyOpacity(parseColor(strokeStr), strokeOpacity);
+    bool fillEnabled = !(fillStr.empty() || fillStr == "none");
 
-    auto* path = new SVGPath(std::wstring(d.begin(), d.end()), fill, stroke);
+    Gdiplus::Color fill = fillEnabled ? applyOpacity(parseColor(fillStr), fillOpacity)
+        : Gdiplus::Color(0, 0, 0, 0);
+
+    Gdiplus::Color stroke = strokeStr.empty() || strokeStr == "none"
+        ? Gdiplus::Color(0, 0, 0, 0)
+        : applyOpacity(parseColor(strokeStr), strokeOpacity);
+
+    auto* path = new SVGPath(std::wstring(d.begin(), d.end()), fill, stroke, strokeWidth, fillEnabled);
 
     std::string transformStr = extractAttr(line, "transform");
-    if (!transformStr.empty())
-    {
+    if (!transformStr.empty()) {
         path->setTransform(std::wstring(transformStr.begin(), transformStr.end()));
     }
+
     return path;
 }
 
@@ -375,3 +383,4 @@ SVGGroup* SVGParser::parseFile(const std::string& filename) {
 
     return group;
 }
+
