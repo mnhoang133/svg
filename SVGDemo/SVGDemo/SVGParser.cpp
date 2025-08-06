@@ -20,6 +20,11 @@ int clampChannel(int value) {
     return value;
 }
 
+void logDebug(const std::string& msg) {
+    std::ofstream log("log.txt", std::ios::app);
+    log << "[DEBUG] " << msg << "\n";
+}
+
 
 // ====== Helper: Safe parse float/int =======
 float safeParseFloat(const std::string& str, float defaultValue = 0.0f) {
@@ -139,22 +144,30 @@ Color SVGParser::parseColor(const std::string& s) {
 std::string SVGParser::extractAttr(const std::string& tag, const std::string& attr) {
     std::string search = attr + "=";
     size_t pos = tag.find(search);
+
     while (pos != std::string::npos) {
+        // Đảm bảo là một attribute thật sự (không phải một phần khác)
         if (pos == 0 || isspace(tag[pos - 1])) {
             size_t start = pos + search.length();
             if (start >= tag.length()) return "";
+
             char quote = tag[start];
             if (quote != '"' && quote != '\'') return "";
+
             ++start;
             size_t end = tag.find(quote, start);
             if (end == std::string::npos) return "";
-            return tag.substr(start, end - start);
+
+            std::string result = tag.substr(start, end - start);
+
+            return result;
         }
+
         pos = tag.find(search, pos + 1);
     }
+
     return "";
 }
-
 Gdiplus::Color SVGParser::parseStyleColor(const std::string& styleStr, const std::string& key, bool isStroke) {
     std::regex regex(key + R"(\s*:\s*([^;]+))");
     std::smatch match;
@@ -263,6 +276,7 @@ std::string SVGParser::mergeAttributes(const std::string& parentTag, const std::
             }
         }
     }
+
     return merged;
 }
 
@@ -273,6 +287,7 @@ std::string SVGParser::mergeAttributes(const std::string& parentTag, const std::
 
 // Parse the <rect> tag thanh doi tuong SVGRect
 SVGElement* SVGParser::parseRect(const std::string& line) {
+
     float x = safeParseFloat(extractAttr(line, "x"), 0.0f);
     float y = safeParseFloat(extractAttr(line, "y"), 0.0f);
     float width = safeParseFloat(extractAttr(line, "width"), 0.0f);
@@ -294,6 +309,8 @@ SVGElement* SVGParser::parseRect(const std::string& line) {
     auto* rect = new SVGRect(center, width, height, fill, stroke, strokeWidth);
 
     std::string transformStr = extractAttr(line, "transform");
+    logDebug("Found transform: " + transformStr);
+
     if (!transformStr.empty())
     {
         rect->setTransform(std::wstring(transformStr.begin(), transformStr.end()));
@@ -523,6 +540,7 @@ SVGElement* SVGParser::parsePath(const std::string& line) {
     {
         path->setTransform(std::wstring(transformStr.begin(), transformStr.end()));
     }
+    logDebug(transformStr);
     return path;
 }
 
@@ -721,7 +739,7 @@ SVGGroup* SVGParser::parseFile(const std::string& filename) {
             else if (line.find("<polyline") != std::string::npos)
             {
                 group->addElement(parsePolyline(line));
-                //MessageBox(NULL, L"polyline", L"Tiêu đề", MB_OK);
+                //MessageBox(NULL, L"polyliene", L"Tiêu đề", MB_OK);
             }
             else if (line.find("<polygon") != std::string::npos)
             {

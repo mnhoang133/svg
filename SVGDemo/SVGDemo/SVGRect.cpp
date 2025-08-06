@@ -13,23 +13,27 @@ SVGRect::SVGRect(const svg::Point& center, float width, float height,
 
 // Ham render de ve hinh chu nhat len Graphics
 void SVGRect::render(Gdiplus::Graphics* graphics) {
+    if (!graphics) return;
 
+    // Lưu transform hiện tại
     Gdiplus::Matrix oldTransform;
     graphics->GetTransform(&oldTransform);
 
-    // Áp dụng transform riêng
+    // Áp dụng transform của đối tượng này (nếu có)
     graphics->MultiplyTransform(&transform);
 
-    Gdiplus::SolidBrush brush(fillColor);            // Doi tuong to mau
-    Gdiplus::Pen pen(strokeColor, strokeWidth);      // Doi tuong ve vien
+    // Tạo pen và brush
+    Gdiplus::SolidBrush brush(fillColor);
+    Gdiplus::Pen pen(strokeColor, strokeWidth);
 
-    // Tinh toa do goc tren trai tu tam
-    Gdiplus::REAL topLeftX = center.x - width / 2;
-    Gdiplus::REAL topLeftY = center.y - height / 2;
+ 
+    Gdiplus::REAL topLeftX = center.x - width / 2.0f;
+    Gdiplus::REAL topLeftY = center.y - height / 2.0f;
 
-    // Ve hinh chu nhat: fill truoc roi draw border
+    // Vẽ
     graphics->FillRectangle(&brush, topLeftX, topLeftY, width, height);
     graphics->DrawRectangle(&pen, topLeftX, topLeftY, width, height);
 
+    // Khôi phục transform cũ
     graphics->SetTransform(&oldTransform);
 }

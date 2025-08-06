@@ -5,6 +5,7 @@
 #include <gdiplus.h>
 #include <regex>
 #include <sstream>
+#include <iostream>
 
 
 class SVGElement 
@@ -14,7 +15,7 @@ protected:
 public:
        virtual void render(Gdiplus::Graphics* graphics) = 0;
 
-       virtual void setTransform(const std::wstring& transformStr) {
+       virtual void setTransform(const std::wstring& transformStr)  {
            std::wregex pattern(L"(translate|scale|rotate)\\s*\\(([^\\)]+)\\)");
            auto begin = std::wsregex_iterator(transformStr.begin(), transformStr.end(), pattern);
            auto end = std::wsregex_iterator();
@@ -50,6 +51,15 @@ public:
            }
        }
 
+       virtual void transformSetter(const Gdiplus::Matrix& other) {
+           Gdiplus::REAL elements[6];
+           other.GetElements(elements);
+           transform.SetElements(
+               elements[0], elements[1],  // m11, m12
+               elements[2], elements[3],  // m21, m22
+               elements[4], elements[5]   // dx, dy
+           );
+       }
 
        virtual ~SVGElement() = default;
 };

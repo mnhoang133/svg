@@ -41,6 +41,7 @@ void SVGG::render(Gdiplus::Graphics* graphics) {
     // Render từng phần tử con
     for (SVGElement* child : children) {
         if (child && child != this) {
+            child->transformSetter(this->getTransform());
             child->render(graphics);
         }
     }
