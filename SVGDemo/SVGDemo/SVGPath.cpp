@@ -1,4 +1,4 @@
-﻿#include "stdafx.h"             //  Luon de dau tien neu dung precompiled header
+#include "stdafx.h"
 
 #include <sstream>
 #include "SVGPath.h"
@@ -6,117 +6,221 @@
 #include <objidl.h>
 #include <gdiplus.h>
 #include <vector>
-
+#include <string>
+#include <cctype>
 using namespace Gdiplus;
 
-// Ham khoi tao, luu du lieu duong dan SVG va mau fill/stroke
-SVGPath::SVGPath(const std::wstring& d, Color fill, Color stroke)
-    : d(d), fill(fill), stroke(stroke) {
+static void skipSeparators(const std::wstring& s, size_t& i) {
+    while (i < s.size() && (iswspace(s[i]) || s[i] == L',')) ++i;
 }
 
-// Ve path len Graphics* su dung GraphicsPath
+static bool parseNumber(const std::wstring& s, size_t& i, float& out) {
+    skipSeparators(s, i);
+    if (i >= s.size()) return false;
+    size_t start = i;
+    bool hasDigit = false;
+    if (s[i] == L'+' || s[i] == L'-') ++i;
+    while (i < s.size() && iswdigit(s[i])) { hasDigit = true; ++i; }
+    if (i < s.size() && s[i] == L'.') {
+        ++i;
+        while (i < s.size() && iswdigit(s[i])) { hasDigit = true; ++i; }
+    }
+    if (i < s.size() && (s[i] == L'e' || s[i] == L'E')) {
+        ++i;
+        if (i < s.size() && (s[i] == L'+' || s[i] == L'-')) ++i;
+        bool expDigits = false;
+        while (i < s.size() && iswdigit(s[i])) { expDigits = true; ++i; }
+        if (!expDigits) return false;
+    }
+    if (!hasDigit) return false;
+    std::wstring numStr = s.substr(start, i - start);
+    try { out = std::stof(numStr); }
+    catch (...) { return false; }
+    return true;
+}
+
+SVGPath::SVGPath(const std::wstring& d, Color fill, Color stroke, float strokeWidth, bool fillEnabled)
+    : d(d), fill(fill), stroke(stroke), strokeWidth(strokeWidth), doFill(fillEnabled) {}
+
 void SVGPath::render(Graphics* graphics) {
     if (!graphics) return;
 
-    Gdiplus::Matrix oldTransform;
-    graphics->GetTransform(&oldTransform);
-
-    // Áp dụng transform riêng
-    graphics->MultiplyTransform(&transform);
-
     GraphicsPath path;
-    std::wistringstream iss(d);
-    std::wstring token;
-    wchar_t cmd = 0;
+    const std::wstring& s = d;
+    size_t i = 0;
+    float x = 0, y = 0;
+    float startX = 0, startY = 0;
+    float prevCtrlX = 0, prevCtrlY = 0;
+    float prevQuadX = 0, prevQuadY = 0;
+    wchar_t currentCmd = 0;
+    bool hasPrevCtrl = false, hasPrevQuad = false;
 
-    float x = 0, y = 0;           // current point
-    float startX = 0, startY = 0; // start point of current subpath
+    while (i < s.size()) {
+        skipSeparators(s, i);
+        if (i >= s.size()) break;
 
-    while (iss >> token) {
-        if (iswalpha(token[0])) {
-            cmd = token[0];
+        if (iswalpha(s[i])) {
+            currentCmd = s[i];
+            ++i;
         }
-        else {
-            // Put token back into stream and parse based on command
-            iss.putback(L' ');
-            for (int i = token.size() - 1; i >= 0; --i) {
-                iss.putback(token[i]);
-            }
+        bool relative = iswlower(currentCmd);
+        wchar_t cmd = towupper(currentCmd);
 
-            switch (cmd) {
-            case 'M':
-            {
-                float x1, y1;
-                iss >> x1;
-                if (iss.peek() == ',') iss.get();
-                iss >> y1;
-                x = x1;
-                y = y1;
-                path.StartFigure();
-                startX = x;
-                startY = y;
-                break;
+        switch (cmd) {
+        case L'M': { // move
+            float x1, y1;
+            if (!parseNumber(s, i, x1) || !parseNumber(s, i, y1)) break;
+            if (relative) { x1 += x; y1 += y; }
+            x = x1; y = y1;
+            path.StartFigure();
+            startX = x; startY = y;
+            // handle implicit lineto
+            while (true) {
+                size_t save = i;
+                float nx, ny;
+                if (parseNumber(s, i, nx) && parseNumber(s, i, ny)) {
+                    if (relative) { nx += x; ny += y; }
+                    path.AddLine(x, y, nx, ny);
+                    x = nx; y = ny;
+                }
+                else { i = save; break; }
             }
-            case 'L':
-            {
-                float x1, y1;
-                iss >> x1;
-                if (iss.peek() == ',') iss.get();
-                iss >> y1;
-                path.AddLine(x, y, x1, y1);
-                x = x1;
-                y = y1;
-                break;
+            break;
+        }
+        case L'L': { // lineto
+            while (true) {
+                float x1, y1; size_t save = i;
+                if (parseNumber(s, i, x1) && parseNumber(s, i, y1)) {
+                    if (relative) { x1 += x; y1 += y; }
+                    path.AddLine(x, y, x1, y1);
+                    x = x1; y = y1;
+                }
+                else { i = save; break; }
             }
-            case 'H':
-            {
-                float x1;
-                iss >> x1;
-                path.AddLine(x, y, x1, y);
-                x = x1;
-                break;
+            break;
+        }
+        case L'H': { // horizontal lineto
+            while (true) {
+                float x1; size_t save = i;
+                if (parseNumber(s, i, x1)) {
+                    if (relative) x1 += x;
+                    path.AddLine(x, y, x1, y);
+                    x = x1;
+                }
+                else { i = save; break; }
             }
-            case 'V':
-            {
-                float y1;
-                iss >> y1;
-                path.AddLine(x, y, x, y1);
-                y = y1;
-                break;
+            break;
+        }
+        case L'V': { // vertical lineto
+            while (true) {
+                float y1; size_t save = i;
+                if (parseNumber(s, i, y1)) {
+                    if (relative) y1 += y;
+                    path.AddLine(x, y, x, y1);
+                    y = y1;
+                }
+                else { i = save; break; }
             }
-            case 'Z': case 'z':
-                path.CloseFigure();
-                x = startX;
-                y = startY;
-                break;
-            case 'C':
-            {
+            break;
+        }
+        case L'C': { // cubic bezier
+            while (true) {
+                size_t save = i;
                 float x1, y1, x2, y2, x3, y3;
-                iss >> x1;
-                if (iss.peek() == ',') iss.get();
-                iss >> y1;
-                iss >> x2;
-                if (iss.peek() == ',') iss.get();
-                iss >> y2;
-                iss >> x3;
-                if (iss.peek() == ',') iss.get();
-                iss >> y3;
-
-                path.AddBezier(x, y, x1, y1, x2, y2, x3, y3);
-                x = x3;
-                y = y3;
-                break;
+                if (parseNumber(s, i, x1) && parseNumber(s, i, y1) &&
+                    parseNumber(s, i, x2) && parseNumber(s, i, y2) &&
+                    parseNumber(s, i, x3) && parseNumber(s, i, y3)) {
+                    if (relative) {
+                        x1 += x; y1 += y; x2 += x; y2 += y; x3 += x; y3 += y;
+                    }
+                    path.AddBezier(x, y, x1, y1, x2, y2, x3, y3);
+                    prevCtrlX = x2; prevCtrlY = y2; hasPrevCtrl = true;
+                    x = x3; y = y3;
+                }
+                else { i = save; break; }
             }
+            break;
+        }
+        case L'S': { // smooth cubic bezier
+            while (true) {
+                size_t save = i;
+                float x2, y2, x3, y3;
+                if (parseNumber(s, i, x2) && parseNumber(s, i, y2) &&
+                    parseNumber(s, i, x3) && parseNumber(s, i, y3)) {
+                    if (relative) { x2 += x; y2 += y; x3 += x; y3 += y; }
+                    float x1 = x, y1 = y;
+                    if (hasPrevCtrl && (currentCmd == 'S' || currentCmd == 's' || currentCmd == 'C' || currentCmd == 'c')) {
+                        x1 = 2 * x - prevCtrlX;
+                        y1 = 2 * y - prevCtrlY;
+                    }
+                    path.AddBezier(x, y, x1, y1, x2, y2, x3, y3);
+                    prevCtrlX = x2; prevCtrlY = y2; hasPrevCtrl = true;
+                    x = x3; y = y3;
+                }
+                else { i = save; break; }
             }
+            break;
+        }
+        case L'Q': { // quadratic bezier
+            while (true) {
+                size_t save = i;
+                float x1, y1, x2, y2;
+                if (parseNumber(s, i, x1) && parseNumber(s, i, y1) &&
+                    parseNumber(s, i, x2) && parseNumber(s, i, y2)) {
+                    if (relative) { x1 += x; y1 += y; x2 += x; y2 += y; }
+                    // convert to cubic
+                    float cx1 = x + 2.0f / 3.0f * (x1 - x);
+                    float cy1 = y + 2.0f / 3.0f * (y1 - y);
+                    float cx2 = x2 + 2.0f / 3.0f * (x1 - x2);
+                    float cy2 = y2 + 2.0f / 3.0f * (y1 - y2);
+                    path.AddBezier(x, y, cx1, cy1, cx2, cy2, x2, y2);
+                    prevQuadX = x1; prevQuadY = y1; hasPrevQuad = true;
+                    x = x2; y = y2;
+                }
+                else { i = save; break; }
+            }
+            break;
+        }
+        case L'T': { // smooth quadratic bezier
+            while (true) {
+                size_t save = i;
+                float x2, y2;
+                if (parseNumber(s, i, x2) && parseNumber(s, i, y2)) {
+                    if (relative) { x2 += x; y2 += y; }
+                    float x1 = x, y1 = y;
+                    if (hasPrevQuad && (currentCmd == 'T' || currentCmd == 't' || currentCmd == 'Q' || currentCmd == 'q')) {
+                        x1 = 2 * x - prevQuadX;
+                        y1 = 2 * y - prevQuadY;
+                    }
+                    float cx1 = x + 2.0f / 3.0f * (x1 - x);
+                    float cy1 = y + 2.0f / 3.0f * (y1 - y);
+                    float cx2 = x2 + 2.0f / 3.0f * (x1 - x2);
+                    float cy2 = y2 + 2.0f / 3.0f * (y1 - y2);
+                    path.AddBezier(x, y, cx1, cy1, cx2, cy2, x2, y2);
+                    prevQuadX = x1; prevQuadY = y1; hasPrevQuad = true;
+                    x = x2; y = y2;
+                }
+                else { i = save; break; }
+            }
+            break;
+        }
+        case L'Z': { // close
+            path.CloseFigure();
+            x = startX; y = startY;
+            hasPrevCtrl = false; hasPrevQuad = false;
+            break;
+        }
+        default: // skip unsupported or unknown command
+            ++i;
+            break;
         }
     }
 
-    SolidBrush brush(fill);
-    Pen pen(stroke, 2.0f);
-    graphics->FillPath(&brush, &path);
+    path.Transform(const_cast<Matrix*>(&transform));
+    if (doFill) {
+        SolidBrush brush(fill);
+        graphics->FillPath(&brush, &path);
+    }
+    Pen pen(stroke, strokeWidth);
     graphics->DrawPath(&pen, &path);
-
-    graphics->SetTransform(&oldTransform);
 }
-
-
