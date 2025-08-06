@@ -445,26 +445,41 @@ SVGElement* SVGParser::parseText(const std::string& line) {
 
 // Parse the <path> tag thanh SVGPath
 SVGElement* SVGParser::parsePath(const std::string& line) {
-
+    // Lấy các thuộc tính từ chuỗi dòng <path>
     std::string d = extractAttr(line, "d");
     std::string fillStr = extractAttr(line, "fill");
     std::string strokeStr = extractAttr(line, "stroke");
     std::string fillOpStr = extractAttr(line, "fill-opacity");
     std::string strokeOpStr = extractAttr(line, "stroke-opacity");
+    std::string strokeWidthStr = extractAttr(line, "stroke-width");
+    std::string transformStr = extractAttr(line, "transform");
 
+    // Chuyển đổi sang float, mặc định là 1.0 nếu không có
     float fillOpacity = fillOpStr.empty() ? 1.0f : std::stof(fillOpStr);
     float strokeOpacity = strokeOpStr.empty() ? 1.0f : std::stof(strokeOpStr);
+    float strokeWidth = strokeWidthStr.empty() ? 1.0f : std::stof(strokeWidthStr);
 
-    Color fill = fillStr.empty() || fillStr == "none" ? Color(0, 0, 0, 0) : applyOpacity(parseColor(fillStr), fillOpacity);
-    Color stroke = strokeStr.empty() || strokeStr == "none" ? Color(0, 0, 0, 0) : applyOpacity(parseColor(strokeStr), strokeOpacity);
+    // Cờ bật fill
+    bool fillEnabled = !(fillStr.empty() || fillStr == "none");
 
-    auto* path = new SVGPath(std::wstring(d.begin(), d.end()), fill, stroke);
+    // Màu fill
+    Gdiplus::Color fill = fillEnabled 
+        ? applyOpacity(parseColor(fillStr), fillOpacity)
+        : Gdiplus::Color(0, 0, 0, 0);  // Màu trong suốt
 
-    std::string transformStr = extractAttr(line, "transform");
-    if (!transformStr.empty())
-    {
+    // Màu stroke
+    Gdiplus::Color stroke = (strokeStr.empty() || strokeStr == "none")
+        ? Gdiplus::Color(0, 0, 0, 0)
+        : applyOpacity(parseColor(strokeStr), strokeOpacity);
+
+    // Tạo đối tượng SVGPath
+    auto* path = new SVGPath(std::wstring(d.begin(), d.end()), fill, stroke, strokeWidth, fillEnabled);
+
+    // Gán transform nếu có
+    if (!transformStr.empty()) {
         path->setTransform(std::wstring(transformStr.begin(), transformStr.end()));
     }
+
     return path;
 }
 
@@ -560,3 +575,4 @@ SVGGroup* SVGParser::parseFile(const std::string& filename) {
     }
     return group;
 }
+
