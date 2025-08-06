@@ -1,4 +1,4 @@
-﻿#include "stdafx.h"
+#include "stdafx.h"
 #include "SVGParser.h"
 #include "Point.h"
 
@@ -12,6 +12,27 @@
 #include <gdiplus.h>
 
 using namespace Gdiplus;
+
+// ====== Helper: Safe parse float/int =======
+float safeParseFloat(const std::string& str, float defaultValue = 0.0f) {
+    try {
+        if (str.empty()) return defaultValue;
+        return std::stof(str);
+    }
+    catch (const std::exception&) {
+        return defaultValue;
+    }
+}
+
+int safeParseInt(const std::string& str, int defaultValue = 0) {
+    try {
+        if (str.empty()) return defaultValue;
+        return std::stoi(str);
+    }
+    catch (const std::exception&) {
+        return defaultValue;
+    }
+}
 
 // Ham ap dung do mo cho mau
 Gdiplus::Color applyOpacity(const Gdiplus::Color& color, float opacity) {
@@ -30,7 +51,13 @@ Color SVGParser::parseColor(const std::string& s) {
         return Color(0, 0, 0, 0); // mau trong suot
 
     if (str[0] == '#') {
-        unsigned int hex = std::stoul(str.substr(1), nullptr, 16);
+        unsigned int hex = 0;
+        try {
+            hex = std::stoul(str.substr(1), nullptr, 16);
+        }
+        catch (const std::exception&) {
+            return Color(255, 0, 0, 0);
+        }
         return Color(255, (hex >> 16) & 0xFF, (hex >> 8) & 0xFF, hex & 0xFF);
     }
 
@@ -47,9 +74,9 @@ Color SVGParser::parseColor(const std::string& s) {
         std::string token;
         int r = 0, g = 0, b = 0;
 
-        if (std::getline(iss, token, ',')) r = std::stoi(token);
-        if (std::getline(iss, token, ',')) g = std::stoi(token);
-        if (std::getline(iss, token, ',')) b = std::stoi(token);
+        if (std::getline(iss, token, ',')) r = safeParseInt(token, 0);
+        if (std::getline(iss, token, ',')) g = safeParseInt(token, 0);
+        if (std::getline(iss, token, ',')) b = safeParseInt(token, 0);
 
         return Color(255, r, g, b);
     }
@@ -86,27 +113,21 @@ Gdiplus::Color SVGParser::parseStyleColor(const std::string& styleStr, const std
     }
 
     // Nếu fill thì default là black, nếu stroke thì default là transparent
-    return isStroke ? Gdiplus::Color(0, 0, 0, 0) : Gdiplus::Color(0, 0, 0);  // RGBA = (0,0,0,0) hoặc (0,0,0,255)
+    return isStroke ? Gdiplus::Color(0, 0, 0, 0) : Gdiplus::Color(0, 0, 0);
 }
 
 float SVGParser::parseStyleFloat(const std::string& styleStr, const std::string& key, float defaultValue) {
     std::regex regex(key + R"(\s*:\s*([^;]+))");
     std::smatch match;
     if (std::regex_search(styleStr, match, regex)) {
-        try {
-            return std::stof(match[1]);  //  dòng gây crash
-        }
-        catch (const std::exception& e) {
-            std::cerr << "Error parsing float for key '" << key << "': " << e.what() << std::endl;
-            return defaultValue;
-        }
+        return safeParseFloat(match[1], defaultValue);
     }
     return defaultValue;
 }
 
 std::string extractOpeningTag(const std::string& line) {
     std::smatch match;
-    std::regex pattern(R"(<\s*([^\s>/]+)[^>]*>)"); // khớp với <g ...>
+    std::regex pattern(R"(<\s*([^\s>/]+)[^>]*>)");
     if (std::regex_search(line, match, pattern)) {
         return match.str(0);
     }
@@ -121,8 +142,6 @@ std::string extractInnerContent(const std::string& line) {
     }
     return "";
 }
-
-
 
 std::vector<std::string> extractChildElements(const std::string& content) {
     std::vector<std::string> children;
@@ -149,7 +168,8 @@ std::vector<std::string> extractChildElements(const std::string& content) {
                     start = pos;
                     inTag = true;
                 }
-                if (content[pos + content.substr(pos).find('>') - 1] != '/') // not self-closing
+                size_t closePos = content.substr(pos).find('>');
+                if (closePos != std::string::npos && content[pos + closePos - 1] != '/')
                     depth++;
             }
         }
@@ -158,7 +178,6 @@ std::vector<std::string> extractChildElements(const std::string& content) {
 
     return children;
 }
-
 
 std::string readFullGBlock(std::ifstream& file, std::string currentLine) {
     std::string content = currentLine + "\n";
@@ -196,28 +215,26 @@ std::string SVGParser::mergeAttributes(const std::string& parentTag, const std::
             }
         }
     }
-
     return merged;
 }
-
 
 // ================= SHAPES =====================
 
 // Parse the <rect> tag thanh doi tuong SVGRect
 SVGElement* SVGParser::parseRect(const std::string& line) {
-    float x = std::stof(extractAttr(line, "x"));
-    float y = std::stof(extractAttr(line, "y"));
-    float width = std::stof(extractAttr(line, "width"));
-    float height = std::stof(extractAttr(line, "height"));
-    float strokeWidth = std::stof(extractAttr(line, "stroke-width"));
+    float x = safeParseFloat(extractAttr(line, "x"), 0.0f);
+    float y = safeParseFloat(extractAttr(line, "y"), 0.0f);
+    float width = safeParseFloat(extractAttr(line, "width"), 0.0f);
+    float height = safeParseFloat(extractAttr(line, "height"), 0.0f);
+    float strokeWidth = safeParseFloat(extractAttr(line, "stroke-width"), 1.0f);
 
     std::string fillStr = extractAttr(line, "fill");
     std::string strokeStr = extractAttr(line, "stroke");
     std::string fillOpStr = extractAttr(line, "fill-opacity");
     std::string strokeOpStr = extractAttr(line, "stroke-opacity");
 
-    float fillOpacity = fillOpStr.empty() ? 1.0f : std::stof(fillOpStr);
-    float strokeOpacity = strokeOpStr.empty() ? 1.0f : std::stof(strokeOpStr);
+    float fillOpacity = safeParseFloat(fillOpStr, 1.0f);
+    float strokeOpacity = safeParseFloat(strokeOpStr, 1.0f);
 
     Color fill = fillStr.empty() || fillStr == "none" ? Color(0, 0, 0, 0) : applyOpacity(parseColor(fillStr), fillOpacity);
     Color stroke = strokeStr.empty() || strokeStr == "none" ? Color(0, 0, 0, 0) : applyOpacity(parseColor(strokeStr), strokeOpacity);
@@ -225,7 +242,6 @@ SVGElement* SVGParser::parseRect(const std::string& line) {
     svg::Point center = { x + width / 2.0f, y + height / 2.0f };
     auto* rect = new SVGRect(center, width, height, fill, stroke, strokeWidth);
 
-    //transform
     std::string transformStr = extractAttr(line, "transform");
     if (!transformStr.empty())
     {
@@ -236,20 +252,18 @@ SVGElement* SVGParser::parseRect(const std::string& line) {
 
 // Parse the <circle> tag thanh doi tuong SVGCircle
 SVGElement* SVGParser::parseCircle(const std::string& line) {
-
-    float cx = std::stof(extractAttr(line, "cx"));
-    float cy = std::stof(extractAttr(line, "cy"));
-    float r = std::stof(extractAttr(line, "r"));
-    float strokeWidth = std::stof(extractAttr(line, "stroke-width"));
-
+    float cx = safeParseFloat(extractAttr(line, "cx"), 0.0f);
+    float cy = safeParseFloat(extractAttr(line, "cy"), 0.0f);
+    float r = safeParseFloat(extractAttr(line, "r"), 0.0f);
+    float strokeWidth = safeParseFloat(extractAttr(line, "stroke-width"), 1.0f);
 
     std::string fillStr = extractAttr(line, "fill");
     std::string strokeStr = extractAttr(line, "stroke");
     std::string fillOpStr = extractAttr(line, "fill-opacity");
     std::string strokeOpStr = extractAttr(line, "stroke-opacity");
 
-    float fillOpacity = fillOpStr.empty() ? 1.0f : std::stof(fillOpStr);
-    float strokeOpacity = strokeOpStr.empty() ? 1.0f : std::stof(strokeOpStr);
+    float fillOpacity = safeParseFloat(fillOpStr, 1.0f);
+    float strokeOpacity = safeParseFloat(strokeOpStr, 1.0f);
 
     Color fill = fillStr.empty() || fillStr == "none" ? Color(0, 0, 0, 0) : applyOpacity(parseColor(fillStr), fillOpacity);
     Color stroke = strokeStr.empty() || strokeStr == "none" ? Color(0, 0, 0, 0) : applyOpacity(parseColor(strokeStr), strokeOpacity);
@@ -266,19 +280,19 @@ SVGElement* SVGParser::parseCircle(const std::string& line) {
 
 // Parse the <ellipse> tag thanh doi tuong SVGEllipse
 SVGElement* SVGParser::parseEllipse(const std::string& line) {
-    float cx = std::stof(extractAttr(line, "cx"));
-    float cy = std::stof(extractAttr(line, "cy"));
-    float rx = std::stof(extractAttr(line, "rx"));
-    float ry = std::stof(extractAttr(line, "ry"));
-    float strokeWidth = std::stof(extractAttr(line, "stroke-width"));
+    float cx = safeParseFloat(extractAttr(line, "cx"), 0.0f);
+    float cy = safeParseFloat(extractAttr(line, "cy"), 0.0f);
+    float rx = safeParseFloat(extractAttr(line, "rx"), 0.0f);
+    float ry = safeParseFloat(extractAttr(line, "ry"), 0.0f);
+    float strokeWidth = safeParseFloat(extractAttr(line, "stroke-width"), 1.0f);
 
     std::string fillStr = extractAttr(line, "fill");
     std::string strokeStr = extractAttr(line, "stroke");
     std::string fillOpStr = extractAttr(line, "fill-opacity");
     std::string strokeOpStr = extractAttr(line, "stroke-opacity");
 
-    float fillOpacity = fillOpStr.empty() ? 1.0f : std::stof(fillOpStr);
-    float strokeOpacity = strokeOpStr.empty() ? 1.0f : std::stof(strokeOpStr);
+    float fillOpacity = safeParseFloat(fillOpStr, 1.0f);
+    float strokeOpacity = safeParseFloat(strokeOpStr, 1.0f);
 
     Color fill = fillStr.empty() || fillStr == "none" ? Color(0, 0, 0, 0) : applyOpacity(parseColor(fillStr), fillOpacity);
     Color stroke = strokeStr.empty() || strokeStr == "none" ? Color(0, 0, 0, 0) : applyOpacity(parseColor(strokeStr), strokeOpacity);
@@ -295,17 +309,17 @@ SVGElement* SVGParser::parseEllipse(const std::string& line) {
 
 // Parse the <line> tag thanh doi tuong SVGLine
 SVGElement* SVGParser::parseLine(const std::string& line) {
-    float x1 = std::stof(extractAttr(line, "x1"));
-    float y1 = std::stof(extractAttr(line, "y1"));
-    float x2 = std::stof(extractAttr(line, "x2"));
-    float y2 = std::stof(extractAttr(line, "y2"));
-    float strokeWidth = std::stof(extractAttr(line, "stroke-width"));
+    float x1 = safeParseFloat(extractAttr(line, "x1"), 0.0f);
+    float y1 = safeParseFloat(extractAttr(line, "y1"), 0.0f);
+    float x2 = safeParseFloat(extractAttr(line, "x2"), 0.0f);
+    float y2 = safeParseFloat(extractAttr(line, "y2"), 0.0f);
+    float strokeWidth = safeParseFloat(extractAttr(line, "stroke-width"), 1.0f);
 
     std::string strokeStr = extractAttr(line, "stroke");
     std::string strokeOpStr = extractAttr(line, "stroke-opacity");
-    float strokeOpacity = strokeOpStr.empty() ? 1.0f : std::stof(strokeOpStr);
+    float strokeOpacity = safeParseFloat(strokeOpStr, 1.0f);
     Color stroke = strokeStr.empty() || strokeStr == "none" ? Color(0, 0, 0, 0) : applyOpacity(parseColor(strokeStr), strokeOpacity);
-    //tránh đặt là line để tránh trùng với line tham chiếu vào
+
     auto* svgline = new SVGLine({ x1, y1 }, { x2, y2 }, stroke, strokeWidth);
 
     std::string transformStr = extractAttr(line, "transform");
@@ -325,22 +339,18 @@ SVGElement* SVGParser::parsePolyline(const std::string& line) {
     std::string strokeOpStr = extractAttr(line, "stroke-opacity");
     std::string fillOpStr = extractAttr(line, "fill-opacity");
 
-    float strokeOpacity = strokeOpStr.empty() ? 1.0f : std::stof(strokeOpStr);
-    float fillOpacity = fillOpStr.empty() ? 1.0f : std::stof(fillOpStr);
+    float strokeOpacity = safeParseFloat(strokeOpStr, 1.0f);
+    float fillOpacity = safeParseFloat(fillOpStr, 1.0f);
 
-    float strokeWidth = 1.0f;
-    std::string sw = extractAttr(line, "stroke-width");
-    if (!sw.empty()) strokeWidth = std::stof(sw);
+    float strokeWidth = safeParseFloat(extractAttr(line, "stroke-width"), 1.0f);
 
-    // DEBUG STROKE/FILL neu tat ca deu "none" hoac opacity = 0
     bool strokeInvisible = (strokeStr.empty() || strokeStr == "none" || strokeOpacity == 0.0f);
     bool fillInvisible = (fillStr.empty() || fillStr == "none" || fillOpacity == 0.0f);
 
     Color stroke, fill;
-
     if (strokeInvisible && fillInvisible) {
-        stroke = applyOpacity(Color(70, 70, 70), 1.0f);    // Gan den
-        fill = applyOpacity(Color(110, 110, 110), 0.9f);   // Xam dam
+        stroke = applyOpacity(Color(70, 70, 70), 1.0f);
+        fill = applyOpacity(Color(110, 110, 110), 0.9f);
     }
     else {
         if (strokeStr.empty() || strokeStr == "none")
@@ -360,8 +370,8 @@ SVGElement* SVGParser::parsePolyline(const std::string& line) {
     while (iss >> pair) {
         size_t comma = pair.find(',');
         if (comma != std::string::npos) {
-            float x = std::stof(pair.substr(0, comma));
-            float y = std::stof(pair.substr(comma + 1));
+            float x = safeParseFloat(pair.substr(0, comma), 0.0f);
+            float y = safeParseFloat(pair.substr(comma + 1), 0.0f);
             points.push_back({ x, y });
         }
     }
@@ -379,17 +389,16 @@ SVGElement* SVGParser::parsePolyline(const std::string& line) {
 // Parse the <polygon> tag thanh SVGPolygon
 SVGElement* SVGParser::parsePolygon(const std::string& line) {
     std::string rawPoints = extractAttr(line, "points");
-    float strokeWidth = std::stof(extractAttr(line, "stroke-width"));
+    float strokeWidth = safeParseFloat(extractAttr(line, "stroke-width"), 1.0f);
 
     std::string strokeStr = extractAttr(line, "stroke");
     std::string fillStr = extractAttr(line, "fill");
     std::string strokeOpStr = extractAttr(line, "stroke-opacity");
     std::string fillOpStr = extractAttr(line, "fill-opacity");
 
-    float strokeOpacity = strokeOpStr.empty() ? 1.0f : std::stof(strokeOpStr);
-    float fillOpacity = fillOpStr.empty() ? 1.0f : std::stof(fillOpStr);
+    float strokeOpacity = safeParseFloat(strokeOpStr, 1.0f);
+    float fillOpacity = safeParseFloat(fillOpStr, 1.0f);
 
-    // Ap dung mau voi do mo
     Color stroke = strokeStr.empty() || strokeStr == "none" ? Color(0, 0, 0, 0) : applyOpacity(parseColor(strokeStr), strokeOpacity);
     Color fill = fillStr.empty() || fillStr == "none" ? Color(0, 0, 0, 0) : applyOpacity(parseColor(fillStr), fillOpacity);
 
@@ -399,8 +408,8 @@ SVGElement* SVGParser::parsePolygon(const std::string& line) {
     while (iss >> pair) {
         size_t comma = pair.find(',');
         if (comma != std::string::npos) {
-            float x = std::stof(pair.substr(0, comma));
-            float y = std::stof(pair.substr(comma + 1));
+            float x = safeParseFloat(pair.substr(0, comma), 0.0f);
+            float y = safeParseFloat(pair.substr(comma + 1), 0.0f);
             points.push_back({ x, y });
         }
     }
@@ -417,17 +426,16 @@ SVGElement* SVGParser::parsePolygon(const std::string& line) {
 
 // Parse the <text> tag thanh SVGText
 SVGElement* SVGParser::parseText(const std::string& line) {
-    float x = std::stof(extractAttr(line, "x"));
-    float y = std::stof(extractAttr(line, "y"));
-    int fontSize = std::stoi(extractAttr(line, "font-size"));
+    float x = safeParseFloat(extractAttr(line, "x"), 0.0f);
+    float y = safeParseFloat(extractAttr(line, "y"), 0.0f);
+    int fontSize = safeParseInt(extractAttr(line, "font-size"), 12);
 
     std::string fillStr = extractAttr(line, "fill");
     std::string fillOpStr = extractAttr(line, "fill-opacity");
-    float fillOpacity = fillOpStr.empty() ? 1.0f : std::stof(fillOpStr);
+    float fillOpacity = safeParseFloat(fillOpStr, 1.0f);
 
     Color fill = fillStr.empty() || fillStr == "none" ? Color(0, 0, 0, 0) : applyOpacity(parseColor(fillStr), fillOpacity);
 
-    // Lay noi dung giua the <text>...</text>
     std::size_t start = line.find('>');
     std::size_t end = line.find('<', start);
     std::string content = (start != std::string::npos && end != std::string::npos) ? line.substr(start + 1, end - start - 1) : "";
@@ -445,41 +453,25 @@ SVGElement* SVGParser::parseText(const std::string& line) {
 
 // Parse the <path> tag thanh SVGPath
 SVGElement* SVGParser::parsePath(const std::string& line) {
-    // Lấy các thuộc tính từ chuỗi dòng <path>
     std::string d = extractAttr(line, "d");
     std::string fillStr = extractAttr(line, "fill");
     std::string strokeStr = extractAttr(line, "stroke");
     std::string fillOpStr = extractAttr(line, "fill-opacity");
     std::string strokeOpStr = extractAttr(line, "stroke-opacity");
-    std::string strokeWidthStr = extractAttr(line, "stroke-width");
+
+    float fillOpacity = safeParseFloat(fillOpStr, 1.0f);
+    float strokeOpacity = safeParseFloat(strokeOpStr, 1.0f);
+
+    Color fill = fillStr.empty() || fillStr == "none" ? Color(0, 0, 0, 0) : applyOpacity(parseColor(fillStr), fillOpacity);
+    Color stroke = strokeStr.empty() || strokeStr == "none" ? Color(0, 0, 0, 0) : applyOpacity(parseColor(strokeStr), strokeOpacity);
+
+    auto* path = new SVGPath(std::wstring(d.begin(), d.end()), fill, stroke);
+
     std::string transformStr = extractAttr(line, "transform");
-
-    // Chuyển đổi sang float, mặc định là 1.0 nếu không có
-    float fillOpacity = fillOpStr.empty() ? 1.0f : std::stof(fillOpStr);
-    float strokeOpacity = strokeOpStr.empty() ? 1.0f : std::stof(strokeOpStr);
-    float strokeWidth = strokeWidthStr.empty() ? 1.0f : std::stof(strokeWidthStr);
-
-    // Cờ bật fill
-    bool fillEnabled = !(fillStr.empty() || fillStr == "none");
-
-    // Màu fill
-    Gdiplus::Color fill = fillEnabled 
-        ? applyOpacity(parseColor(fillStr), fillOpacity)
-        : Gdiplus::Color(0, 0, 0, 0);  // Màu trong suốt
-
-    // Màu stroke
-    Gdiplus::Color stroke = (strokeStr.empty() || strokeStr == "none")
-        ? Gdiplus::Color(0, 0, 0, 0)
-        : applyOpacity(parseColor(strokeStr), strokeOpacity);
-
-    // Tạo đối tượng SVGPath
-    auto* path = new SVGPath(std::wstring(d.begin(), d.end()), fill, stroke, strokeWidth, fillEnabled);
-
-    // Gán transform nếu có
-    if (!transformStr.empty()) {
+    if (!transformStr.empty())
+    {
         path->setTransform(std::wstring(transformStr.begin(), transformStr.end()));
     }
-
     return path;
 }
 
@@ -507,9 +499,8 @@ SVGElement* SVGParser::parseG(const std::string& block) {
     auto children = extractChildElements(innerContent);
     for (const auto& child : children) {
         SVGElement* elem = nullptr;
-
         if (child.find("<g") != std::string::npos)
-            elem = parseG(child); // không merge
+            elem = parseG(child);
         else {
             std::string merged = mergeAttributes(openTag, child);
 
@@ -530,10 +521,8 @@ SVGElement* SVGParser::parseG(const std::string& block) {
             else if (merged.find("<polygon") != std::string::npos)
                 elem = parsePolygon(merged);
         }
-
         if (elem) g->addChild(elem);
     }
-
     return g;
 }
 
@@ -548,7 +537,12 @@ SVGGroup* SVGParser::parseFile(const std::string& filename) {
         return group;
     }
 
-    // Doc tung dong va parse theo ten the
+    // Nếu file có BOM, bỏ qua BOM
+    if (file.peek() == 0xEF) {
+        char bom[3];
+        file.read(bom, 3);
+    }
+
     while (std::getline(file, line)) {
         line.erase(0, line.find_first_not_of(" \t\r\n"));
         if (line.find("<circle") != std::string::npos)
@@ -575,4 +569,3 @@ SVGGroup* SVGParser::parseFile(const std::string& filename) {
     }
     return group;
 }
-
