@@ -495,8 +495,9 @@ SVGElement* SVGParser::parseG(const std::string& block) {
 
     auto children = extractChildElements(innerContent);
 
-
+    int childCount = 0;
     for (const auto& child : children) {
+
         SVGElement* elem = nullptr;
         if (child.find("<g") != std::string::npos)
             elem = parseG(child);
@@ -520,22 +521,40 @@ SVGElement* SVGParser::parseG(const std::string& block) {
             else if (merged.find("<polygon") != std::string::npos)
                 elem = parsePolygon(merged);
         }
-        if (elem) g->addChild(elem);
+        if (elem) {
+            g->addChild(elem);
+            childCount++;
+        }
     }
+
     return g;
 }
-
 // Doc file SVG tu ten file va parse cac shape vao mot SVGGroup
+
+
 SVGGroup* SVGParser::parseFile(const std::string& filename) {
     std::ifstream file(filename);
     if (!file.is_open()) return nullptr;
 
-    // Đọc toàn bộ file vào một string
+    // Đọc file để biết có bao nhiêu dòng
+    std::vector<std::string> lines;
+    std::string line;
+    while (std::getline(file, line)) {
+        if (line.find_first_not_of(" \t\r\n") != std::string::npos) {
+            lines.push_back(line);
+        }
+    }
+
+    file.close(); // đóng lại để mở lần 2
+    std::ifstream file2(filename);
+    if (!file2.is_open()) return nullptr;
+
+    // Gom hết nội dung lại thành 1 string (xài cho cả 2 trường hợp)
     std::stringstream buffer;
-    buffer << file.rdbuf();
+    buffer << file2.rdbuf();
     std::string svgContent = buffer.str();
 
-    // Xóa BOM nếu có
+    // Xử lý BOM nếu có
     if (svgContent.size() >= 3 &&
         (unsigned char)svgContent[0] == 0xEF &&
         (unsigned char)svgContent[1] == 0xBB &&
@@ -544,33 +563,74 @@ SVGGroup* SVGParser::parseFile(const std::string& filename) {
 
     SVGGroup* group = new SVGGroup({});
 
-    // Regex tách từng shape chính, dùng non-greedy để tách đúng từng thẻ
-    std::regex tagRegex(R"((<rect[\s\S]*?\/?>)|(<circle[\s\S]*?\/?>)|(<ellipse[\s\S]*?\/?>)|(<line[\s\S]*?\/?>)|(<text[\s\S]*?<\/text>)|(<path[\s\S]*?\/?>)|(<polyline[\s\S]*?\/?>)|(<polygon[\s\S]*?\/?>)|(<g[\s\S]*?<\/g>))");
-    auto tagsBegin = std::sregex_iterator(svgContent.begin(), svgContent.end(), tagRegex);
-    auto tagsEnd = std::sregex_iterator();
+    // ========== CASE 1: FILE CÓ 1 DÒNG ==========
+    if (lines.size() <= 1) {
+        std::regex tagRegex(R"((<rect[\s\S]*?\/?>)|(<circle[\s\S]*?\/?>)|(<ellipse[\s\S]*?\/?>)|(<line[\s\S]*?\/?>)|(<text[\s\S]*?<\/text>)|(<path[\s\S]*?\/?>)|(<polyline[\s\S]*?\/?>)|(<polygon[\s\S]*?\/?>)|(<g[\s\S]*?<\/g>))");
+        auto tagsBegin = std::sregex_iterator(svgContent.begin(), svgContent.end(), tagRegex);
+        auto tagsEnd = std::sregex_iterator();
 
-    for (auto it = tagsBegin; it != tagsEnd; ++it) {
+        for (auto it = tagsBegin; it != tagsEnd; ++it) {
+            std::string shape = it->str();
 
+            if (shape.find("<g") != std::string::npos)
+                group->addElement(parseG(shape));
+            else if (shape.find("<circle") != std::string::npos)
+                group->addElement(parseCircle(shape));
+            else if (shape.find("<rect") != std::string::npos)
+                group->addElement(parseRect(shape));
+            else if (shape.find("<ellipse") != std::string::npos)
+                group->addElement(parseEllipse(shape));
+            else if (shape.find("<line") != std::string::npos)
+                group->addElement(parseLine(shape));
+            else if (shape.find("<text") != std::string::npos)
+                group->addElement(parseText(shape));
+            else if (shape.find("<path") != std::string::npos)
+                group->addElement(parsePath(shape));
+            else if (shape.find("<polyline") != std::string::npos)
+                group->addElement(parsePolyline(shape));
+            else if (shape.find("<polygon") != std::string::npos)
+                group->addElement(parsePolygon(shape));
+        }
+    }
+    // ========== CASE 2: FILE NHIỀU DÒNG ==========
+    else {
+        std::ifstream file3(filename);
+        if (!file3.is_open()) return nullptr;
 
-        std::string line = it->str();
-        if (line.find("<circle") != std::string::npos)
-            group->addElement(parseCircle(line));
-        else if (line.find("<rect") != std::string::npos)
-            group->addElement(parseRect(line));
-        else if (line.find("<ellipse") != std::string::npos)
-            group->addElement(parseEllipse(line));
-        else if (line.find("<line") != std::string::npos)
-            group->addElement(parseLine(line));
-        else if (line.find("<text") != std::string::npos)
-            group->addElement(parseText(line));
-        else if (line.find("<path") != std::string::npos)
-            group->addElement(parsePath(line));
-        else if (line.find("<polyline") != std::string::npos)
-            group->addElement(parsePolyline(line));
-        else if (line.find("<polygon") != std::string::npos)
-            group->addElement(parsePolygon(line));
-        else if (line.find("<g") != std::string::npos)
-            group->addElement(parseG(line));
+        while (std::getline(file3, line)) {
+            if (line.find_first_not_of(" \t\r\n") == std::string::npos)
+                continue;
+
+            if (line.find("<g") != std::string::npos) {
+                std::string fullGBlock = line;
+                int openG = 1;
+                while (openG > 0 && std::getline(file3, line)) {
+                    fullGBlock += "\n" + line;
+                    if (line.find("<g") != std::string::npos) openG++;
+                    if (line.find("</g>") != std::string::npos) openG--;
+                }
+
+                group->addElement(parseG(fullGBlock));
+                continue;
+            }
+
+            if (line.find("<circle") != std::string::npos)
+                group->addElement(parseCircle(line));
+            else if (line.find("<rect") != std::string::npos)
+                group->addElement(parseRect(line));
+            else if (line.find("<ellipse") != std::string::npos)
+                group->addElement(parseEllipse(line));
+            else if (line.find("<line") != std::string::npos)
+                group->addElement(parseLine(line));
+            else if (line.find("<text") != std::string::npos)
+                group->addElement(parseText(line));
+            else if (line.find("<path") != std::string::npos)
+                group->addElement(parsePath(line));
+            else if (line.find("<polyline") != std::string::npos)
+                group->addElement(parsePolyline(line));
+            else if (line.find("<polygon") != std::string::npos)
+                group->addElement(parsePolygon(line));
+        }
     }
 
     return group;
