@@ -21,24 +21,26 @@ void SVGG::setStyle(Gdiplus::Color stroke, float strokeW, float strokeOp,
 
 // Thêm phần tử con vào nhóm
 void SVGG::addChild(SVGElement* shape) {
-    if (shape) {
+    if (shape && shape != this) {
         children.push_back(shape);
     }
 }
 
 // Hàm render gọi render từng phần tử con, áp dụng transform cha
 void SVGG::render(Gdiplus::Graphics* graphics) {
+
+
     if (!graphics) return;
 
     // Lưu trạng thái cũ
     Gdiplus::GraphicsState state = graphics->Save();
 
     //// Áp dụng transform nếu có
-    //applyTransform(graphics);
+    applyTransform(graphics);
 
     // Render từng phần tử con
     for (SVGElement* child : children) {
-        if (child) {
+        if (child && child != this) {
             child->render(graphics);
         }
     }

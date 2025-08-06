@@ -1,4 +1,4 @@
-#ifndef SVGElement_h
+﻿#ifndef SVGElement_h
 #define SVGElement_h
 #include <windows.h>
 #include <objidl.h>
@@ -43,6 +43,13 @@ public:
        }
 
        virtual const Gdiplus::Matrix& getTransform() const { return transform; }
+
+       virtual void applyTransform(Gdiplus::Graphics* graphics) const {
+           if (graphics) {
+               graphics->MultiplyTransform(&transform); // `transform` là Matrix member của SVGElement
+           }
+       }
+
 
        virtual ~SVGElement() = default;
 };

@@ -14,8 +14,14 @@ SVGPolyline::SVGPolyline(const std::vector<svg::Point>& points,
 }
 
 // Ham render de ve polyline len Graphics
-void SVGPolyline::render(Graphics* g) {
+void SVGPolyline::render(Graphics* graphics) {
     if (points.size() < 2) return;           // Can it nhat 2 diem moi ve duoc polyline
+
+    Gdiplus::Matrix oldTransform;
+    graphics->GetTransform(&oldTransform);
+
+    // Áp dụng transform riêng
+    graphics->MultiplyTransform(&transform);
 
     std::vector<PointF> gdipPoints;
     for (const auto& p : points) {
@@ -47,12 +53,14 @@ void SVGPolyline::render(Graphics* g) {
     // Neu co fill thi to mau
     if (fill.GetAlpha() > 0) {
         SolidBrush brush(fill);
-        g->FillPath(&brush, &path);
+        graphics->FillPath(&brush, &path);
     }
 
     // Neu co stroke thi ve vien
     if (stroke.GetAlpha() > 0) {
         Pen pen(stroke, strokeWidth);
-        g->DrawPath(&pen, &path);
+        graphics->DrawPath(&pen, &path);
     }
+
+    graphics->SetTransform(&oldTransform);
 }

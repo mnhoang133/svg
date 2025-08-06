@@ -19,6 +19,13 @@ SVGText::SVGText(const svg::Point& position,
 
 // Ham render dung Graphics de ve chu len man hinh
 void SVGText::render(Graphics* graphics) {
+
+    Gdiplus::Matrix oldTransform;
+    graphics->GetTransform(&oldTransform);
+
+    // Áp dụng transform riêng
+    graphics->MultiplyTransform(&transform);
+
     FontFamily fontFamily(L"Arial");                         // Chon font Arial
     Font font(&fontFamily, (REAL)fontSize, FontStyleRegular, UnitPixel);  // Tao font voi kich thuoc da cho
     SolidBrush brush(fillColor);                             // Brush de to mau chu
@@ -26,4 +33,6 @@ void SVGText::render(Graphics* graphics) {
 
     // Ve chu bang DrawString voi noi dung content
     graphics->DrawString(content.c_str(), -1, &font, point, &brush);
+
+    graphics->SetTransform(&oldTransform);
 }

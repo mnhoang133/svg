@@ -13,8 +13,15 @@ SVGLine::SVGLine(const svg::Point& p1,
 
 // Ham ve duong thang
 void SVGLine::render(Graphics* graphics) {
+    Gdiplus::Matrix oldTransform;
+    graphics->GetTransform(&oldTransform);
+
+    // Áp dụng transform riêng 
+    graphics->MultiplyTransform(&transform);
     // Tao pen voi mau va do day
     Pen pen(strokeColor, strokeWidth);
     // Ve duong thang tu p1 den p2
     graphics->DrawLine(&pen, p1.x, p1.y, p2.x, p2.y);
+
+    graphics->SetTransform(&oldTransform);
 }

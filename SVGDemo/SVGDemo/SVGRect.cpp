@@ -13,6 +13,13 @@ SVGRect::SVGRect(const svg::Point& center, float width, float height,
 
 // Ham render de ve hinh chu nhat len Graphics
 void SVGRect::render(Gdiplus::Graphics* graphics) {
+
+    Gdiplus::Matrix oldTransform;
+    graphics->GetTransform(&oldTransform);
+
+    // Áp dụng transform riêng
+    graphics->MultiplyTransform(&transform);
+
     Gdiplus::SolidBrush brush(fillColor);            // Doi tuong to mau
     Gdiplus::Pen pen(strokeColor, strokeWidth);      // Doi tuong ve vien
 
@@ -23,4 +30,6 @@ void SVGRect::render(Gdiplus::Graphics* graphics) {
     // Ve hinh chu nhat: fill truoc roi draw border
     graphics->FillRectangle(&brush, topLeftX, topLeftY, width, height);
     graphics->DrawRectangle(&pen, topLeftX, topLeftY, width, height);
+
+    graphics->SetTransform(&oldTransform);
 }
