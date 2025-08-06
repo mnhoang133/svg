@@ -2,6 +2,7 @@
 #include "SVGParser.h"
 #include "Point.h"
 
+#include <map>
 #include <regex>
 #include <algorithm>
 #include <windows.h>
@@ -12,6 +13,13 @@
 #include <gdiplus.h>
 
 using namespace Gdiplus;
+
+int clampChannel(int value) {
+    if (value < 0) return 0;
+    if (value > 255) return 255;
+    return value;
+}
+
 
 // ====== Helper: Safe parse float/int =======
 float safeParseFloat(const std::string& str, float defaultValue = 0.0f) {
@@ -43,44 +51,87 @@ Gdiplus::Color applyOpacity(const Gdiplus::Color& color, float opacity) {
 // Ham chuyen chuoi SVG mau thanh doi tuong Color
 Color SVGParser::parseColor(const std::string& s) {
     std::string str = s;
+    // Trim đầu cuối và về chữ thường
     str.erase(0, str.find_first_not_of(" \t\r\n"));
     str.erase(str.find_last_not_of(" \t\r\n") + 1);
     std::transform(str.begin(), str.end(), str.begin(), ::tolower);
 
     if (str.empty() || str == "none")
-        return Color(0, 0, 0, 0); // mau trong suot
+        return Color(0, 0, 0, 0);  // Trong suốt
 
+    // ===== Hex color =====
     if (str[0] == '#') {
-        unsigned int hex = 0;
-        try {
-            hex = std::stoul(str.substr(1), nullptr, 16);
+        if (str.length() == 4) {
+            // #RGB => #RRGGBB
+            int r = std::stoi(std::string(2, str[1]), nullptr, 16);
+            int g = std::stoi(std::string(2, str[2]), nullptr, 16);
+            int b = std::stoi(std::string(2, str[3]), nullptr, 16);
+            return Color(255, r, g, b);
         }
-        catch (const std::exception&) {
-            return Color(255, 0, 0, 0);
+        else if (str.length() == 7) {
+            try {
+                unsigned int hex = std::stoul(str.substr(1), nullptr, 16);
+                return Color(255, (hex >> 16) & 0xFF, (hex >> 8) & 0xFF, hex & 0xFF);
+            }
+            catch (...) {
+                return Color(255, 0, 0, 0); // fallback
+            }
         }
-        return Color(255, (hex >> 16) & 0xFF, (hex >> 8) & 0xFF, hex & 0xFF);
     }
 
-    if (str.find("rgb(") == 0) {
-        size_t start = str.find("(");
-        size_t end = str.find(")");
+    // ===== rgb(...) hoặc rgba(...) =====
+    if (str.find("rgb(") == 0 || str.find("rgba(") == 0) {
+        size_t start = str.find("("), end = str.find(")");
         if (start == std::string::npos || end == std::string::npos || end <= start)
             return Color(255, 0, 0, 0);
 
-        std::string rgbContent = str.substr(start + 1, end - start - 1);
-        rgbContent.erase(remove_if(rgbContent.begin(), rgbContent.end(), ::isspace), rgbContent.end());
+        std::string content = str.substr(start + 1, end - start - 1);
+        content.erase(remove_if(content.begin(), content.end(), ::isspace), content.end());
 
-        std::istringstream iss(rgbContent);
+        std::istringstream iss(content);
         std::string token;
-        int r = 0, g = 0, b = 0;
+        int r = 0, g = 0, b = 0, a = 255;
 
-        if (std::getline(iss, token, ',')) r = safeParseInt(token, 0);
-        if (std::getline(iss, token, ',')) g = safeParseInt(token, 0);
-        if (std::getline(iss, token, ',')) b = safeParseInt(token, 0);
+        if (std::getline(iss, token, ',')) r = std::stoi(token);
+        if (std::getline(iss, token, ',')) g = std::stoi(token);
+        if (std::getline(iss, token, ',')) b = std::stoi(token);
+        if (std::getline(iss, token, ',')) {
+            float af = std::stof(token);
+            if (af < 0.0f) af = 0.0f;
+            if (af > 1.0f) af = 1.0f;
+            a = static_cast<int>(af * 255.0f);
+        }
 
-        return Color(255, r, g, b);
+        // Clamp tay
+        r = (r < 0) ? 0 : ((r > 255) ? 255 : r);
+        g = (g < 0) ? 0 : ((g > 255) ? 255 : g);
+        b = (b < 0) ? 0 : ((b > 255) ? 255 : b);
+
+        return Color(a, r, g, b);
     }
 
+    // ===== Tên màu phổ biến =====
+    if (str == "black")         return Color(255, 0, 0, 0);
+    else if (str == "white")         return Color(255, 255, 255, 255);
+    else if (str == "red")           return Color(255, 255, 0, 0);
+    else if (str == "green")         return Color(255, 0, 128, 0);
+    else if (str == "blue")          return Color(255, 0, 0, 255);
+    else if (str == "yellow")        return Color(255, 255, 255, 0);
+    else if (str == "gray" || str == "grey") return Color(255, 128, 128, 128);
+    else if (str == "cyan")          return Color(255, 0, 255, 255);
+    else if (str == "magenta")       return Color(255, 255, 0, 255);
+    else if (str == "orange")        return Color(255, 255, 165, 0);
+    else if (str == "purple")        return Color(255, 128, 0, 128);
+    else if (str == "brown")         return Color(255, 165, 42, 42);
+    else if (str == "darkslategray") return Color(255, 47, 79, 79);
+    else if (str == "deepskyblue")   return Color(255, 0, 191, 255);
+    else if (str == "navy")          return Color(255, 0, 0, 128);
+    else if (str == "midnightblue")  return Color(255, 25, 25, 112);
+    else if (str == "darkmagenta")   return Color(255, 139, 0, 139);
+    else if (str == "blueviolet")    return Color(255, 138, 43, 226);
+    else if (str == "skyblue")       return Color(255, 135, 206, 235);
+
+    // fallback
     return Color(255, 0, 0, 0);
 }
 
@@ -214,6 +265,9 @@ std::string SVGParser::mergeAttributes(const std::string& parentTag, const std::
     }
     return merged;
 }
+
+
+
 
 // ================= SHAPES =====================
 
@@ -504,6 +558,22 @@ SVGElement* SVGParser::parseG(const std::string& block) {
         else {
             std::string merged = mergeAttributes(openTag, child);
 
+            if (extractAttr(merged, "transform").empty()) {
+                std::string parentTransform = extractAttr(openTag, "transform");
+                if (!parentTransform.empty()) {
+                    // Gắn thủ công
+                    size_t insertPos = merged.find('>');
+                    if (insertPos != std::string::npos && merged[insertPos - 1] == '/') {
+                        // xử lý tag tự đóng: <circle ... />
+                        merged.insert(insertPos - 1, " transform=\"" + parentTransform + "\"");
+                    }
+                    else {
+                        merged.insert(insertPos, " transform=\"" + parentTransform + "\"");
+                    }
+                }
+            }
+
+
             if (merged.find("<circle") != std::string::npos)
                 elem = parseCircle(merged);
             else if (merged.find("<rect") != std::string::npos)
@@ -611,25 +681,54 @@ SVGGroup* SVGParser::parseFile(const std::string& filename) {
                 }
 
                 group->addElement(parseG(fullGBlock));
+                //MessageBox(NULL, L"G", L"Tiêu đề", MB_OK);
+
                 continue;
             }
 
             if (line.find("<circle") != std::string::npos)
+            {
                 group->addElement(parseCircle(line));
+                //MessageBox(NULL, L"circle", L"Tiêu đề", MB_OK);
+            }
             else if (line.find("<rect") != std::string::npos)
+            {
                 group->addElement(parseRect(line));
+                //MessageBox(NULL, L"rect", L"Tiêu đề", MB_OK);
+            }
             else if (line.find("<ellipse") != std::string::npos)
+            {
                 group->addElement(parseEllipse(line));
+                //MessageBox(NULL, L"ellipse", L"Tiêu đề", MB_OK);
+            }
             else if (line.find("<line") != std::string::npos)
+            {
                 group->addElement(parseLine(line));
+                //MessageBox(NULL, L"line", L"Tiêu đề", MB_OK);
+            }
             else if (line.find("<text") != std::string::npos)
+            {
                 group->addElement(parseText(line));
+                //MessageBox(NULL, L"text", L"Tiêu đề", MB_OK);
+
+            }
             else if (line.find("<path") != std::string::npos)
+            {
                 group->addElement(parsePath(line));
+                //MessageBox(NULL, L"path", L"Tiêu đề", MB_OK);
+
+            }
             else if (line.find("<polyline") != std::string::npos)
+            {
                 group->addElement(parsePolyline(line));
+                //MessageBox(NULL, L"polyline", L"Tiêu đề", MB_OK);
+            }
             else if (line.find("<polygon") != std::string::npos)
+            {
                 group->addElement(parsePolygon(line));
+                //MessageBox(NULL, L"polygon", L"Tiêu đề", MB_OK);
+
+            }
         }
     }
 
