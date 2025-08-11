@@ -20,22 +20,10 @@ public:
     static SVGGroup* parseFile(const std::string& filename);
 
 private:
-    static std::string extractAttr(const std::string& tag, const std::string& attr);
-    static Gdiplus::Color parseColor(const std::string& s);
 
-    static Gdiplus::Color parseStyleColor(const std::string& styleStr, const std::string& key, bool isStroke);
-    static float parseStyleFloat(const std::string& styleStr, const std::string& key, float defaultValue);
-    static std::string mergeAttributes(const std::string& parentTag, const std::string& childTag);
 
     // Parse từng loại shape
-    static SVGElement* parseCircle(const std::string& line);
-    static SVGElement* parseRect(const std::string& line);
-    static SVGElement* parseEllipse(const std::string& line);
-    static SVGElement* parseLine(const std::string& line);
-    static SVGElement* parseText(const std::string& line);
-    static SVGElement* parsePath(const std::string& line);
-    static SVGElement* parsePolyline(const std::string& line);
-    static SVGElement* parsePolygon(const std::string& line);
+
     static SVGElement* parseG(const std::string& line);
 };
 
