@@ -14,6 +14,7 @@
 #include "ParserUtils.h"
 
 
+#include <functional>
 #include <map>
 #include <regex>
 #include <algorithm>
@@ -28,6 +29,61 @@ using namespace Gdiplus;
 using namespace ParserUtils;
 using namespace AttributeParserUtils;
 
+// Trong SVGParser.cpp (hoặc .h nếu bạn muốn khai báo)
+
+// Hàm này nhận 1 đoạn string là 1 tag svg (ví dụ: <circle cx="..." ... />)
+// và con trỏ group để thêm element parse được vào
+void SVGParser::parseShape(const std::string& shapeContent, SVGGroup* group) {
+    // Map tên tag sang hàm parse tương ứng (dùng lambda để gọi parser)
+    static const std::map<std::string, std::function<SVGElement* (const std::string&)>> parserMap = {
+        {"circle", [](const std::string& s) {
+            SVGCircleParser parser;
+            return parser.parse(s);
+        }},
+        {"rect", [](const std::string& s) {
+            SVGRectParser parser;
+            return parser.parse(s);
+        }},
+        {"ellipse", [](const std::string& s) {
+            SVGEllipseParser parser;
+            return parser.parse(s);
+        }},
+        {"line", [](const std::string& s) {
+            SVGLineParser parser;
+            return parser.parse(s);
+        }},
+        {"text", [](const std::string& s) {
+            SVGTextParser parser;
+            return parser.parse(s);
+        }},
+        {"path", [](const std::string& s) {
+            SVGPathParser parser;
+            return parser.parse(s);
+        }},
+        {"polyline", [](const std::string& s) {
+            SVGPolylineParser parser;
+            return parser.parse(s);
+        }},
+        {"polygon", [](const std::string& s) {
+            SVGPolygonParser parser;
+            return parser.parse(s);
+        }},
+        {"g", [](const std::string& s) {
+            SVGGParser parser;
+            return parser.parse(s);
+        }}
+    };
+
+    for (const auto& [tag, parseFunc] : parserMap) {
+        if (shapeContent.find("<" + tag) != std::string::npos) {
+            SVGElement* element = parseFunc(shapeContent);
+            if (element != nullptr) {
+                group->addElement(element);
+            }
+            break;  // tìm thấy tag rồi thì dừng
+        }
+    }
+}
 
 
 // Doc file SVG tu ten file va parse cac shape vao mot SVGGroup
@@ -60,65 +116,22 @@ SVGGroup* SVGParser::parseFile(const std::string& filename) {
         (unsigned char)svgContent[2] == 0xBF)
         svgContent = svgContent.substr(3);
 
+    // ==== Khai báo regex iterator ở đây ====
+    std::regex tagRegex(R"((<rect[\s\S]*?\/?>)|(<circle[\s\S]*?\/?>)|(<ellipse[\s\S]*?\/?>)|(<line[\s\S]*?\/?>)|(<text[\s\S]*?<\/text>)|(<path[\s\S]*?\/?>)|(<polyline[\s\S]*?\/?>)|(<polygon[\s\S]*?\/?>)|(<g[\s\S]*?<\/g>))");
+    auto tagsBegin = std::sregex_iterator(svgContent.begin(), svgContent.end(), tagRegex);
+    auto tagsEnd = std::sregex_iterator();
+
     SVGGroup* group = new SVGGroup({});
 
-    // ========== CASE 1: FILE CÓ 1 DÒNG ==========
+    // CASE 1: file 1 dòng dùng regex iterator
     if (lines.size() <= 1) {
-        std::regex tagRegex(R"((<rect[\s\S]*?\/?>)|(<circle[\s\S]*?\/?>)|(<ellipse[\s\S]*?\/?>)|(<line[\s\S]*?\/?>)|(<text[\s\S]*?<\/text>)|(<path[\s\S]*?\/?>)|(<polyline[\s\S]*?\/?>)|(<polygon[\s\S]*?\/?>)|(<g[\s\S]*?<\/g>))");
-        auto tagsBegin = std::sregex_iterator(svgContent.begin(), svgContent.end(), tagRegex);
-        auto tagsEnd = std::sregex_iterator();
-
         for (auto it = tagsBegin; it != tagsEnd; ++it) {
             std::string shape = it->str();
-
-            if (shape.find("<g") != std::string::npos)
-            {
-                SVGGParser GP;
-                group->addElement(GP.parse(shape));
-            }
-            else if (shape.find("<circle") != std::string::npos)
-            {
-                SVGCircleParser PCircle;
-                group->addElement(PCircle.parse(line));
-            }
-            else if (shape.find("<rect") != std::string::npos)
-            {
-                SVGRectParser PRect;
-                group->addElement(PRect.parse(shape));
-            }
-            else if (shape.find("<ellipse") != std::string::npos)
-            {
-                SVGEllipseParser PEllipse;
-                group->addElement(PEllipse.parse(shape));
-            }
-            else if (shape.find("<line") != std::string::npos)
-            {
-                SVGLineParser PLine;
-                group->addElement(PLine.parse(shape));
-            }
-            else if (shape.find("<text") != std::string::npos)
-            {
-                SVGTextParser PText;
-                group->addElement(PText.parse(shape));
-            }
-            else if (shape.find("<path") != std::string::npos)
-            {
-                SVGPathParser PPath;
-                group->addElement(PPath.parse(shape));
-            }
-            else if (shape.find("<polyline") != std::string::npos)
-            {
-                SVGPolylineParser PPolyline;
-                group->addElement(PPolyline.parse(shape));
-            }
-            else if (shape.find("<polygon") != std::string::npos)
-            {
-                SVGPolygonParser PPolygon;
-                group->addElement(PPolygon.parse(shape));
-            }
+            SVGParser parser;
+            parser.parseShape(shape, group);
         }
     }
-    // ========== CASE 2: FILE NHIỀU DÒNG ==========
+    // CASE 2: file nhiều dòng
     else {
         std::ifstream file3(filename);
         if (!file3.is_open()) return nullptr;
@@ -135,67 +148,12 @@ SVGGroup* SVGParser::parseFile(const std::string& filename) {
                     if (line.find("<g") != std::string::npos) openG++;
                     if (line.find("</g>") != std::string::npos) openG--;
                 }
-                
-                SVGGParser GP;
-                group->addElement(GP.parse(fullGBlock));
-                //MessageBox(NULL, L"G", L"Tiêu đề", MB_OK);
-
+                SVGParser parser;
+                parser.parseShape(fullGBlock, group);
                 continue;
             }
-
-            if (line.find("<circle") != std::string::npos)
-            {
-                SVGCircleParser PCircle;
-                group->addElement(PCircle.parse(line));
-                //MessageBox(NULL, L"circle", L"Tiêu đề", MB_OK);
-            }
-            else if (line.find("<rect") != std::string::npos)
-            {
-                
-                SVGRectParser PRect;
-                group->addElement(PRect.parse(line));
-                
-                //MessageBox(NULL, L"rect", L"Tiêu đề", MB_OK);
-            }
-            else if (line.find("<ellipse") != std::string::npos)
-            {
-                SVGEllipseParser PEllipse;
-                group->addElement(PEllipse.parse(line));
-                //MessageBox(NULL, L"ellipse", L"Tiêu đề", MB_OK);
-            }
-            else if (line.find("<line") != std::string::npos)
-            {
-                SVGLineParser PLine;
-                group->addElement(PLine.parse(line));
-                //MessageBox(NULL, L"line", L"Tiêu đề", MB_OK);
-            }
-            else if (line.find("<text") != std::string::npos)
-            {
-                SVGTextParser PText;
-                group->addElement(PText.parse(line));
-                //MessageBox(NULL, L"text", L"Tiêu đề", MB_OK);
-
-            }
-            else if (line.find("<path") != std::string::npos)
-            {
-                SVGPathParser PPath;
-                group->addElement(PPath.parse(line));
-                //MessageBox(NULL, L"path", L"Tiêu đề", MB_OK);
-
-            }
-            else if (line.find("<polyline") != std::string::npos)
-            {
-                SVGPolylineParser PPolyline;
-                group->addElement(PPolyline.parse(line));
-                //MessageBox(NULL, L"polyliene", L"Tiêu đề", MB_OK);
-            }
-            else if (line.find("<polygon") != std::string::npos)
-            {
-                SVGPolygonParser PPolygon;
-                group->addElement(PPolygon.parse(line));
-                //MessageBox(NULL, L"polygon", L"Tiêu đề", MB_OK);
-
-            }
+            SVGParser parser;
+            parser.parseShape(line, group);
         }
     }
 
