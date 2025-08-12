@@ -1,0 +1,95 @@
+#include "stdafx.h"
+#include "SVGGradient.h"
+#include "SVGAttributeUtils.h"
+#include "ParserUtils.h"
+#include "GradientManager.h"
+#include "SVGLinearGradient.h"
+#include "SVGRadialGradient.h"
+
+#include <algorithm>
+#include <cmath>
+#include <windows.h>
+#include <objidl.h>
+#include <gdiplus.h>
+
+using namespace Gdiplus;
+using namespace AttributeParserUtils;
+using namespace ParserUtils;
+
+// SVGLinearGradient methods
+Brush* SVGLinearGradient::createBrush(const RectF& bounds) {
+    if (stops.empty()) {
+        return new SolidBrush(Color(255, 0, 0, 0)); // Black fallback
+    }
+
+    // Sort stops by offset
+    const_cast<SVGLinearGradient*>(this)->sortStops();
+
+    // Calculate actual coordinates
+    float actualX1, actualY1, actualX2, actualY2;
+
+    if (gradientUnits == "userSpaceOnUse") {
+        actualX1 = x1;
+        actualY1 = y1;
+        actualX2 = x2;
+        actualY2 = y2;
+    }
+    else {
+        // objectBoundingBox - coordinates are percentages
+        actualX1 = bounds.X + x1 * bounds.Width;
+        actualY1 = bounds.Y + y1 * bounds.Height;
+        actualX2 = bounds.X + x2 * bounds.Width;
+        actualY2 = bounds.Y + y2 * bounds.Height;
+    }
+
+    // Create GDI+ linear gradient brush
+    if (stops.size() == 1) {
+        Color color = stops[0].color;
+        if (stops[0].opacity < 1.0f) {
+            color = Color(static_cast<BYTE>(stops[0].opacity * color.GetA()),
+                color.GetR(), color.GetG(), color.GetB());
+        }
+        return new SolidBrush(color);
+    }
+
+    // For multiple stops, create a LinearGradientBrush with first and last colors
+    Color startColor = stops[0].color;
+    Color endColor = stops[stops.size() - 1].color;
+
+    // Apply opacity
+    if (stops[0].opacity < 1.0f) {
+        startColor = Color(static_cast<BYTE>(stops[0].opacity * startColor.GetA()),
+            startColor.GetR(), startColor.GetG(), startColor.GetB());
+    }
+    if (stops[stops.size() - 1].opacity < 1.0f) {
+        endColor = Color(static_cast<BYTE>(stops[stops.size() - 1].opacity * endColor.GetA()),
+            endColor.GetR(), endColor.GetG(), endColor.GetB());
+    }
+
+    LinearGradientBrush* brush = new LinearGradientBrush(
+        PointF(actualX1, actualY1),
+        PointF(actualX2, actualY2),
+        startColor,
+        endColor
+    );
+
+    // Set interpolation colors for multiple stops
+    if (stops.size() > 2) {
+        std::vector<Color> colors;
+        std::vector<REAL> positions;
+
+        for (const auto& stop : stops) {
+            Color color = stop.color;
+            if (stop.opacity < 1.0f) {
+                color = Color(static_cast<BYTE>(stop.opacity * color.GetA()),
+                    color.GetR(), color.GetG(), color.GetB());
+            }
+            colors.push_back(color);
+            positions.push_back(stop.offset);
+        }
+
+        brush->SetInterpolationColors(&colors[0], &positions[0], colors.size());
+    }
+
+    return brush;
+}
