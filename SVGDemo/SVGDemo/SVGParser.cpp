@@ -12,6 +12,7 @@
 #include "Point.h"
 #include "SVGAttributeUtils.h"
 #include "ParserUtils.h"
+#include "SVGGradientParser.h"
 
 
 #include <functional>
@@ -117,6 +118,12 @@ SVGGroup* SVGParser::parseFile(const std::string& filename) {
         svgContent = svgContent.substr(3);
 
     // ==== Khai báo regex iterator ở đây ====
+    std::smatch defsMatch;
+    std::regex defsRegex(R"(<defs[^>]*>([\s\S]*?)<\/defs>)");
+    if (std::regex_search(svgContent, defsMatch, defsRegex)) {
+        std::string defsContent = defsMatch[1].str();
+        SVGGradientParser::parseDefs(defsContent);
+    }
     std::regex tagRegex(R"((<rect[\s\S]*?\/?>)|(<circle[\s\S]*?\/?>)|(<ellipse[\s\S]*?\/?>)|(<line[\s\S]*?\/?>)|(<text[\s\S]*?<\/text>)|(<path[\s\S]*?\/?>)|(<polyline[\s\S]*?\/?>)|(<polygon[\s\S]*?\/?>)|(<g[\s\S]*?<\/g>))");
     auto tagsBegin = std::sregex_iterator(svgContent.begin(), svgContent.end(), tagRegex);
     auto tagsEnd = std::sregex_iterator();
