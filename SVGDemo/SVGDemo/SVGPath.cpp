@@ -8,6 +8,7 @@
 #include <vector>
 #include <string>
 #include <cctype>
+#include "GradientManager.h"
 using namespace Gdiplus;
 
 static void skipSeparators(const std::wstring& s, size_t& i) {
@@ -218,8 +219,20 @@ void SVGPath::render(Graphics* graphics) {
 
     path.Transform(const_cast<Matrix*>(&transform));
     if (doFill) {
-        SolidBrush brush(fill);
-        graphics->FillPath(&brush, &path);
+        if (!fillUrl.empty()) {
+            // Tính bounding box để tạo brush gradient
+            RectF bounds;
+            path.GetBounds(&bounds);
+            Brush* gradientBrush = GradientManager::createBrushFromUrl(fillUrl, bounds);
+            if (gradientBrush) {
+                graphics->FillPath(gradientBrush, &path);
+                delete gradientBrush;
+            }
+        }
+        else {
+            SolidBrush brush(fill);
+            graphics->FillPath(&brush, &path);
+        }
     }
     Pen pen(stroke, strokeWidth);
     graphics->DrawPath(&pen, &path);
