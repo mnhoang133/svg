@@ -16,7 +16,7 @@ private:
     Gdiplus::Color stroke;
     float strokeWidth;
     bool doFill;
-
+    std::string fillUrl;
 public:
     SVGPath(const std::wstring& d,
         Gdiplus::Color fill,
@@ -25,6 +25,9 @@ public:
         bool fillEnabled = true);
 
     void render(Gdiplus::Graphics* graphics) override;
+    void setFillUrl(const std::string& url) { fillUrl = url; }
+    const std::string& getFillUrl() const { return fillUrl; }
 };
 
 #endif // SVGPATH_H
+
