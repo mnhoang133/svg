@@ -2,6 +2,7 @@
 
 #include <sstream>
 #include "SVGPath.h"
+#include "ParserUtils.h"
 #include <windows.h>
 #include <objidl.h>
 #include <gdiplus.h>
@@ -10,6 +11,7 @@
 #include <cctype>
 #include "GradientManager.h"
 using namespace Gdiplus;
+using namespace ParserUtils;
 
 static void skipSeparators(const std::wstring& s, size_t& i) {
     while (i < s.size() && (iswspace(s[i]) || s[i] == L',')) ++i;
@@ -223,6 +225,7 @@ void SVGPath::render(Graphics* graphics) {
             // Tính bounding box để tạo brush gradient
             RectF bounds;
             path.GetBounds(&bounds);
+            logDebug("[PATH RENDER]: FILLURL: " + fillUrl);
             Brush* gradientBrush = GradientManager::createBrushFromUrl(fillUrl, bounds);
             if (gradientBrush) {
                 graphics->FillPath(gradientBrush, &path);

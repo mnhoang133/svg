@@ -1,4 +1,4 @@
-#include "stdafx.h"
+﻿#include "stdafx.h"
 #include "SVGGradient.h"
 #include "SVGAttributeUtils.h"
 #include "ParserUtils.h"
@@ -6,6 +6,7 @@
 #include "SVGLinearGradient.h"
 #include "SVGRadialGradient.h"
 
+#include <unordered_set>
 #include <algorithm>
 #include <cmath>
 #include <windows.h>
@@ -47,4 +48,29 @@ Brush* GradientManager::createBrushFromUrl(const std::string& url, const RectF& 
 
     // Fallback to solid color
     return new SolidBrush(Color(255, 0, 0, 0));
+}
+
+void GradientManager::resolveGradient(const std::string& id, std::unordered_set<std::string>& visited) {
+    if (visited.count(id)) return; // tránh vòng lặp vô hạn
+    visited.insert(id);
+
+    SVGGradient* grad = getGradient(id);
+    if (!grad) return;
+
+    if (!grad->href.empty()) {
+        std::string refId = grad->href[0] == '#' ? grad->href.substr(1) : grad->href;
+        SVGGradient* parent = getGradient(refId);
+        if (parent) {
+            resolveGradient(refId, visited); //  resolve cha trước
+            grad->inheritFrom(parent);
+            logDebug("  -> after inherit, " + id + " stops=" + std::to_string(grad->stops.size()));
+        }
+    }
+}
+
+void GradientManager::resolveAllGradients() {
+    std::unordered_set<std::string> visited;
+    for (auto& [id, grad] : gradients) {
+        resolveGradient(id, visited);
+    }
 }

@@ -21,7 +21,6 @@ public:
 
 private:
     void parseShape(const std::string& shapeContent, SVGGroup* group);
-    static SVGElement* parseG(const std::string& line);
 };
 
 #endif

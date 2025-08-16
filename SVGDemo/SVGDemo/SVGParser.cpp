@@ -36,6 +36,7 @@ using namespace AttributeParserUtils;
 // và con trỏ group để thêm element parse được vào
 void SVGParser::parseShape(const std::string& shapeContent, SVGGroup* group) {
     // Map tên tag sang hàm parse tương ứng (dùng lambda để gọi parser)
+
     static const std::map<std::string, std::function<SVGElement* (const std::string&)>> parserMap = {
         {"circle", [](const std::string& s) {
             SVGCircleParser parser;
@@ -75,13 +76,10 @@ void SVGParser::parseShape(const std::string& shapeContent, SVGGroup* group) {
         }}
     };
 
-    logDebug("[PARSE] Checking shape content: " + shapeContent.substr(0, 50) + "...");
     for (const auto& [tag, parseFunc] : parserMap) {
         if (shapeContent.find("<" + tag) != std::string::npos) {
-            logDebug("[PARSE] Matched <" + tag + "> → calling " + tag + " parser");
             SVGElement* element = parseFunc(shapeContent);
             if (element != nullptr) {
-                logDebug("[PARSE] Parsed <" + tag + "> successfully, adding to group");
                 group->addElement(element);
             }
             else  logDebug("[PARSE] Failed to parse <" + tag + ">");
@@ -151,16 +149,18 @@ SVGGroup* SVGParser::parseFile(const std::string& filename) {
     }
     // CASE 2: file nhiều dòng
     else {
-        logDebug("[DEBUG] [PARSE] Case 2: Multi-line SVG");
         std::ifstream file3(filename);
-        if (!file3.is_open()) return nullptr;
+        if (!file3.is_open()) 
+        {
+            delete group;
+            return nullptr;
+        }
 
         while (std::getline(file3, line)) {
             if (line.find_first_not_of(" \t\r\n") == std::string::npos)
                 continue;
 
             if (line.find("<g") != std::string::npos) {
-                logDebug("[DEBUG] [PARSE] Parse <g> block with nested children");
 
                 std::string fullGBlock = line;
                 int openG = 1;
@@ -177,11 +177,9 @@ SVGGroup* SVGParser::parseFile(const std::string& filename) {
                 line.find("<radialGradient") != std::string::npos ||
                 line.find("<stop") != std::string::npos) {
                 // bỏ qua hoặc để cho SVGGradientParser xử lý
-                logDebug("[DEBUG] [PARSE] Gradient found: " + line);
                 continue;
             }
             SVGParser parser;
-            logDebug("[DEBUG] [PARSE] calling parse Shape");
             parser.parseShape(line, group);
         }
     }

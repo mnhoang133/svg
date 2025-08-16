@@ -104,6 +104,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -147,6 +148,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="GradientManager.h" />
     <ClInclude Include="IShapeParser.h" />
     <ClInclude Include="ParserUtils.h" />
     <ClInclude Include="Point.h" />
@@ -162,8 +164,11 @@
     <ClInclude Include="SVGEllipseParser.h" />
     <ClInclude Include="SVGG.h" />
     <ClInclude Include="SVGGParser.h" />
+    <ClInclude Include="SVGGradient.h" />
+    <ClInclude Include="SVGGradientParser.h" />
     <ClInclude Include="SVGGroup.h" />
     <ClInclude Include="SVGLine.h" />
+    <ClInclude Include="SVGLinearGradient.h" />
     <ClInclude Include="SVGLineParser.h" />
     <ClInclude Include="SVGParser.h" />
     <ClInclude Include="SVGPath.h" />
@@ -172,6 +177,7 @@
     <ClInclude Include="SVGPolygonParser.h" />
     <ClInclude Include="SVGPolyline.h" />
     <ClInclude Include="SVGPolylineParser.h" />
+    <ClInclude Include="SVGRadialGradient.h" />
     <ClInclude Include="SVGRect.h" />
     <ClInclude Include="SVGRectParser.h" />
     <ClInclude Include="SVGText.h" />
@@ -179,6 +185,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="GradientManager.cpp" />
     <ClCompile Include="ParserUtils.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -194,8 +201,11 @@
     <ClCompile Include="SVGEllipseParser.cpp" />
     <ClCompile Include="SVGG.cpp" />
     <ClCompile Include="SVGGParser.cpp" />
+    <ClCompile Include="SVGGradient.cpp" />
+    <ClCompile Include="SVGGradientParser.cpp" />
     <ClCompile Include="SVGGroup.cpp" />
     <ClCompile Include="SVGLine.cpp" />
+    <ClCompile Include="SVGLinearGradient.cpp" />
     <ClCompile Include="SVGLineParser.cpp" />
     <ClCompile Include="SVGParser.cpp" />
     <ClCompile Include="SVGPath.cpp" />
@@ -204,6 +214,7 @@
     <ClCompile Include="SVGPolygonParser.cpp" />
     <ClCompile Include="SVGPolyline.cpp" />
     <ClCompile Include="SVGPolylineParser.cpp" />
+    <ClCompile Include="SVGRadialGradient.cpp" />
     <ClCompile Include="SVGRect.cpp" />
     <ClCompile Include="SVGRectParser.cpp" />
     <ClCompile Include="SVGText.cpp" />

@@ -1,4 +1,4 @@
-#include "stdafx.h"
+﻿#include "stdafx.h"
 #include "SVGGradient.h"
 #include "SVGAttributeUtils.h"
 #include "ParserUtils.h"
@@ -18,18 +18,15 @@ using namespace ParserUtils;
 
 // SVGRadialGradient methods
 Brush* SVGRadialGradient::createBrush(const RectF& bounds) {
+    logDebug("createBrush: niggerrstops.size()=" + std::to_string(stops.size()));
+
     if (stops.empty()) {
-        return new SolidBrush(Color(255, 0, 0, 0)); // Black fallback
+        return new SolidBrush(Color(255, 0, 0, 0)); // fallback: trong suốt
     }
 
-    // Sort stops by offset
     const_cast<SVGRadialGradient*>(this)->sortStops();
 
-    // For radial gradients, we'll use PathGradientBrush
-    // This is a simplified implementation - full radial gradient support is complex in GDI+
-
     float actualCx, actualCy, actualR;
-
     if (gradientUnits == "userSpaceOnUse") {
         actualCx = cx;
         actualCy = cy;
@@ -41,33 +38,47 @@ Brush* SVGRadialGradient::createBrush(const RectF& bounds) {
         actualR = r * std::min<float>(bounds.Width, bounds.Height);
     }
 
-    // Create a circular path
-    GraphicsPath path;
-    RectF ellipseRect(actualCx - actualR, actualCy - actualR, 2 * actualR, 2 * actualR);
-    path.AddEllipse(ellipseRect);
+    int w = (int)bounds.Width;
+    int h = (int)bounds.Height;
+    Bitmap* bmp = new Bitmap(w, h, PixelFormat32bppARGB);
 
-    PathGradientBrush* brush = new PathGradientBrush(&path);
+    for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+            // Tính khoảng cách từ pixel tới tâm
+            float dx = x - actualCx;
+            float dy = y - actualCy;
+            float dist = std::sqrt(dx * dx + dy * dy);
 
-    if (stops.size() >= 2) {
-        // Set center color to first stop
-        Color centerColor = stops[0].color;
-        if (stops[0].opacity < 1.0f) {
-            centerColor = Color(static_cast<BYTE>(stops[0].opacity * centerColor.GetA()),
-                centerColor.GetR(), centerColor.GetG(), centerColor.GetB());
+            float t = dist / actualR; // normalize [0..1]
+
+            // clamp
+            if (t < 0.0f) t = 0.0f;
+            if (t > 1.0f) t = 1.0f;
+
+            // Tìm 2 stops bao quanh t
+            const GradientStop* left = &stops.front();
+            const GradientStop* right = &stops.back();
+
+            for (size_t i = 1; i < stops.size(); i++) {
+                if (t <= stops[i].offset) {
+                    left = &stops[i - 1];
+                    right = &stops[i];
+                    break;
+                }
+            }
+
+            // Nội suy
+            float span = right->offset - left->offset;
+            float localT = (span > 0.0f) ? (t - left->offset) / span : 0.0f;
+
+            BYTE r = (BYTE)((1 - localT) * left->color.GetR() + localT * right->color.GetR());
+            BYTE g = (BYTE)((1 - localT) * left->color.GetG() + localT * right->color.GetG());
+            BYTE b = (BYTE)((1 - localT) * left->color.GetB() + localT * right->color.GetB());
+            BYTE a = (BYTE)((1 - localT) * left->color.GetA() + localT * right->color.GetA());
+
+            bmp->SetPixel(x, y, Color(a, r, g, b));
         }
-        brush->SetCenterColor(centerColor);
-
-        // Set surrounding color to last stop
-        Color surroundColor = stops[stops.size() - 1].color;
-        if (stops[stops.size() - 1].opacity < 1.0f) {
-            surroundColor = Color(static_cast<BYTE>(stops[stops.size() - 1].opacity * surroundColor.GetA()),
-                surroundColor.GetR(), surroundColor.GetG(), surroundColor.GetB());
-        }
-
-        Color surroundColors[] = { surroundColor };
-        int count = 1;
-        brush->SetSurroundColors(surroundColors, &count);
     }
 
-    return brush;
+    return new TextureBrush(bmp);
 }

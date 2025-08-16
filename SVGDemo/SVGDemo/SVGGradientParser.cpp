@@ -16,6 +16,8 @@ using namespace AttributeParserUtils;
 using namespace ParserUtils;
 
 void SVGGradientParser::parseDefs(const std::string& defsContent) {
+    logDebug("[GRADIENT] Enter parseDefs, content length=" + std::to_string(defsContent.size()));
+
     // Regex để tìm tất cả linearGradient tags
     std::regex linearGradientRegex(R"(<linearGradient[\s\S]*?</linearGradient>)");
     auto linearBegin = std::sregex_iterator(defsContent.begin(), defsContent.end(), linearGradientRegex);
@@ -26,11 +28,15 @@ void SVGGradientParser::parseDefs(const std::string& defsContent) {
         SVGLinearGradient* gradient = parseLinearGradient(gradientTag);
         if (gradient && !gradient->id.empty()) {
             GradientManager::addGradient(gradient->id, gradient);
-        }
+            GradientManager::resolveAllGradients();
+            logDebug("gradient " + gradient->id + " stops=" + std::to_string(gradient->stops.size()));
+        } else  logDebug("[GRADIENT] Failed to parse linearGradient");
     }
 
     // Regex để tìm tất cả radialGradient tags
-    std::regex radialGradientRegex(R"(<radialGradient[\s\S]*?</radialGradient>)");
+    std::regex radialGradientRegex(
+        R"(<radialGradient[\s\S]*?(?:\/>|<\/radialGradient>))"
+    );
     auto radialBegin = std::sregex_iterator(defsContent.begin(), defsContent.end(), radialGradientRegex);
     auto radialEnd = std::sregex_iterator();
 
@@ -39,8 +45,14 @@ void SVGGradientParser::parseDefs(const std::string& defsContent) {
         SVGRadialGradient* gradient = parseRadialGradient(gradientTag);
         if (gradient && !gradient->id.empty()) {
             GradientManager::addGradient(gradient->id, gradient);
+            GradientManager::resolveAllGradients();
+
+            logDebug("gradient " + gradient->id + " stops=" + std::to_string(gradient->stops.size()));
         }
+        else  logDebug("[GRADIENT] Failed to parse radialGradient");
     }
+
+
 }
 
 SVGLinearGradient* SVGGradientParser::parseLinearGradient(const std::string& gradientTag) {
@@ -100,6 +112,7 @@ SVGRadialGradient* SVGGradientParser::parseRadialGradient(const std::string& gra
 
     // Parse attributes
     gradient->id = extractAttr(openingTag, "id");
+
     gradient->gradientUnits = extractAttr(openingTag, "gradientUnits");
     if (gradient->gradientUnits.empty()) {
         gradient->gradientUnits = "objectBoundingBox";
@@ -123,6 +136,7 @@ SVGRadialGradient* SVGGradientParser::parseRadialGradient(const std::string& gra
     gradient->fx = parseCoordinate(fxStr, gradient->cx);
     gradient->fy = parseCoordinate(fyStr, gradient->cy);
 
+
     // Parse stops
     parseGradientStops(content, gradient);
 
@@ -141,6 +155,7 @@ void SVGGradientParser::parseGradientStops(const std::string& gradientContent, S
         std::string stopTag = it->str();
         GradientStop stop = parseStop(stopTag);
         gradient->addStop(stop);
+
     }
 }
 
@@ -196,7 +211,21 @@ GradientStop SVGGradientParser::parseStop(const std::string& stopTag) {
 }
 
 bool SVGGradientParser::isFillGradientUrl(const std::string& fillValue) {
-    return fillValue.find("url(#") == 0 && fillValue.back() == ')';
+    std::string val = fillValue; // copy từ const string ra
+
+    // Trim whitespace
+    val = std::regex_replace(val, std::regex("^\\s+|\\s+$"), "");
+
+    // Bỏ dấu " hoặc ' nếu có ở cuối
+    while (!val.empty() && (val.back() == '"' || val.back() == '\'')) {
+        val.pop_back();
+    }
+    // Bỏ dấu " hoặc ' nếu có ở đầu
+    while (!val.empty() && (val.front() == '"' || val.front() == '\'')) {
+        val.erase(0, 1);
+    }
+
+    return val.find("url(#") == 0 && val.back() == ')';
 }
 
 std::string SVGGradientParser::extractGradientId(const std::string& url) {

@@ -18,9 +18,22 @@ using namespace ParserUtils;
 
 // SVGLinearGradient methods
 Brush* SVGLinearGradient::createBrush(const RectF& bounds) {
+   
+    logDebug("createBrush: nigaastops.size()=" + std::to_string(stops.size()));
+    for (int i = 0; i < stops.size(); ++i) {
+        auto c = stops[i].color;
+        logDebug(" stop[" + std::to_string(i) + "] offset=" + std::to_string(stops[i].offset) +
+            " rgba=(" + std::to_string(c.GetR()) + "," +
+            std::to_string(c.GetG()) + "," +
+            std::to_string(c.GetB()) + "," +
+            std::to_string(c.GetA()) + ") opacity=" +
+            std::to_string(stops[i].opacity));
+    }
     if (stops.empty()) {
         return new SolidBrush(Color(255, 0, 0, 0)); // Black fallback
     }
+
+
 
     // Sort stops by offset
     const_cast<SVGLinearGradient*>(this)->sortStops();
@@ -86,6 +99,18 @@ Brush* SVGLinearGradient::createBrush(const RectF& bounds) {
             }
             colors.push_back(color);
             positions.push_back(stop.offset);
+        }
+
+        // Before SetInterpolationColors
+        if (positions.front() != 0.0f) positions.front() = 0.0f;
+        if (positions.back() != 1.0f) positions.back() = 1.0f;
+
+        for (size_t i = 0; i < colors.size(); ++i) {
+            logDebug("!!!!!!!!!!!stop[" + std::to_string(i) + "] pos=" + std::to_string(positions[i]) +
+                " col=(" + std::to_string(colors[i].GetR()) + "," +
+                std::to_string(colors[i].GetG()) + "," +
+                std::to_string(colors[i].GetB()) + "," +
+                std::to_string(colors[i].GetA()) + ")");
         }
 
         brush->SetInterpolationColors(&colors[0], &positions[0], colors.size());

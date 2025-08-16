@@ -1,4 +1,4 @@
-#include "stdafx.h"
+﻿#include "stdafx.h"
 
 #include <windows.h>
 #include <objidl.h>
@@ -16,6 +16,8 @@ using namespace Gdiplus;
 
 SVGElement* SVGPathParser::parse(const std::string& line) const
 {
+    logDebug(line);
+
     std::string d = extractAttr(line, "d");
     std::string fillStr = extractAttr(line, "fill");
     std::string strokeStr = extractAttr(line, "stroke");
@@ -25,17 +27,27 @@ SVGElement* SVGPathParser::parse(const std::string& line) const
     float fillOpacity = safeParseFloat(fillOpStr, 1.0f);
     float strokeOpacity = safeParseFloat(strokeOpStr, 1.0f);
 
-    Color fill = Color(0, 0, 0, 0);
+    Color fill = Color(255, 0, 0, 0);
     std::string fillUrl;
 
+    logDebug("check fill str:" + fillStr);
     if (!fillStr.empty() && fillStr != "none") {
         if (SVGGradientParser::isFillGradientUrl(fillStr)) {
             fillUrl = fillStr;
+            logDebug("[PATH PARSER] FILL: " + fillUrl);
+        }
+        else if (fillStr[0] == '#') {
+            fill = applyOpacity(parseColor(fillStr), fillOpacity);
+            logDebug("[PATH PARSER] FILL: solid color " + fillStr);
         }
         else {
-            fill = applyOpacity(parseColor(fillStr), fillOpacity);
+            // fallback: đen đặc
+            fill = Color(255, 0, 0, 0);
+            logDebug("[PATH PARSER] FILL: default black");
         }
+
     }
+    
     Color stroke = strokeStr.empty() || strokeStr == "none" ? Color(0, 0, 0, 0) : applyOpacity(parseColor(strokeStr), strokeOpacity);
 
     auto* path = new SVGPath(std::wstring(d.begin(), d.end()), fill, stroke);
@@ -46,6 +58,7 @@ SVGElement* SVGPathParser::parse(const std::string& line) const
     {
         path->setTransform(std::wstring(transformStr.begin(), transformStr.end()));
     }
-    logDebug(transformStr);
+    
+
     return path;
 }

@@ -128,13 +128,13 @@ Gdiplus::Color AttributeParserUtils::parseColor(const std::string& s) {
 
 // Ham trich thuoc tinh cua the SVG tu chuoi
 std::string AttributeParserUtils::extractAttr(const std::string& tag, const std::string& attr) {
-    std::string search = attr + "=";
-    size_t pos = tag.find(search);
+    // --- Case 1: attr="..."
+    std::string searchEq = attr + "=";
+    size_t pos = tag.find(searchEq);
 
     while (pos != std::string::npos) {
-        // Đảm bảo là một attribute thật sự (không phải một phần khác)
         if (pos == 0 || isspace(tag[pos - 1])) {
-            size_t start = pos + search.length();
+            size_t start = pos + searchEq.length();
             if (start >= tag.length()) return "";
 
             char quote = tag[start];
@@ -146,14 +146,36 @@ std::string AttributeParserUtils::extractAttr(const std::string& tag, const std:
 
             std::string result = tag.substr(start, end - start);
 
-            return result;
-        }
+            //  cleanup ở đây
+            while (!result.empty() && 
+                   (isspace((unsigned char)result.back()) ||
+                    result.back() == '/' || result.back() == '>'))
+                result.pop_back();
 
-        pos = tag.find(search, pos + 1);
+            return ParserUtils::trimAttrValue(result);
+        }
+        pos = tag.find(searchEq, pos + 1);
+    }
+
+    // --- Case 2: attr:... (ví dụ trong style="fill:...")
+    std::regex styleRegex(attr + R"(\s*:\s*([^;]+))");
+    std::smatch match;
+    if (std::regex_search(tag, match, styleRegex)) {
+        std::string result = match[1].str();
+
+        //  cleanup ở đây luôn
+        while (!result.empty() && 
+               (isspace((unsigned char)result.back()) ||
+                result.back() == '/' || result.back() == '>'))
+            result.pop_back();
+
+        return ParserUtils::trimAttrValue(result);
     }
 
     return "";
 }
+
+
 
 Gdiplus::Color AttributeParserUtils::parseStyleColor(const std::string& styleStr, const std::string& key, bool isStroke) {
     std::regex regex(key + R"(\s*:\s*([^;]+))");

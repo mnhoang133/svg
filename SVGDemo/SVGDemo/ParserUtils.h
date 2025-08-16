@@ -1,7 +1,7 @@
-#ifndef PARSERUTILS_h
+﻿#ifndef PARSERUTILS_h
 #define PARSREULTILS_h
 
-
+#include <iostream>
 #include <vector>
 #include <Gdiplus.h>
 
@@ -16,6 +16,27 @@ namespace ParserUtils
 	std::string extractInnerContent(const std::string& block);
 	std::vector<std::string> extractChildElements(const std::string& innerContent);
 	std::string readFullGBlock(std::ifstream& file, const std::string& firstLine);
+	inline static std::string trimAttrValue(const std::string& value)
+    {
+        size_t start = 0;
+        size_t end = value.size();
+
+        // bỏ khoảng trắng và dấu " ' ở đầu
+        while (start < end && (isspace((unsigned char)value[start]) || value[start] == '"' || value[start] == '\'')) {
+            start++;
+        }
+
+        // bỏ khoảng trắng và ký tự " ' / > ở cuối
+        while (end > start && (isspace((unsigned char)value[end - 1])
+            || value[end - 1] == '"'
+            || value[end - 1] == '\''
+            || value[end - 1] == '/'
+            || value[end - 1] == '>')) {
+            end--;
+        }
+
+        return value.substr(start, end - start);
+    }
 }
 
 #endif // !PARSERUTILS_h

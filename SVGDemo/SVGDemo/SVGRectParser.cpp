@@ -36,7 +36,6 @@ SVGElement* SVGRectParser::parse(const std::string& line) const{
     auto* rect = new SVGRect(center, width, height, fill, stroke, strokeWidth);
 
     std::string transformStr = extractAttr(line, "transform");
-    logDebug("Found transform: " + transformStr);
 
     if (!transformStr.empty())
     {

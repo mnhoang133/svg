@@ -119,3 +119,6 @@ std::string ParserUtils::readFullGBlock(std::ifstream& file, const std::string& 
     }
     return block;
 }
+
+// helper
+

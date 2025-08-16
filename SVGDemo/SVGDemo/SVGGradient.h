@@ -10,31 +10,41 @@
 
 using namespace Gdiplus;
 
-// Struct để lưu thông tin một gradient stop
+// ==========================
+// GradientStop
+// ==========================
 struct GradientStop {
-    float offset;           // Vị trí từ 0.0 đến 1.0
-    Gdiplus::Color color;   // Màu tại vị trí này
-    float opacity;          // Độ mờ
+    float offset;
+    Gdiplus::Color color;
+    float opacity;
 
     GradientStop() : offset(0.0f), color(0, 0, 0, 0), opacity(1.0f) {}
-    GradientStop(float off, Gdiplus::Color col, float op = 1.0f)
-        : offset(off), color(col), opacity(op) {}
+    GradientStop(float off, Gdiplus::Color col, float op = 1.0f) : offset(off), color(col), opacity(op) {}
 };
 
-// Base class cho gradient
+// ==========================
+// SVGGradient: base class
+// ==========================
 class SVGGradient {
 public:
     std::string id;
+    std::string href;
+    std::string gradientUnits;          // "userSpaceOnUse" | "objectBoundingBox"
+    std::string spreadMethod;           // "pad" | "reflect" | "repeat"
     std::vector<GradientStop> stops;
-    std::string gradientUnits;  // "userSpaceOnUse" hoặc "objectBoundingBox"
-    std::string href;           // Tham chiếu đến gradient khác
+
+    // transform có thể lưu raw string hoặc matrix
+    Gdiplus::Matrix gradientTransform;
 
     SVGGradient() : gradientUnits("objectBoundingBox") {}
-    virtual ~SVGGradient() = default;
+    virtual ~SVGGradient() {}
 
-    virtual Gdiplus::Brush* createBrush(const Gdiplus::RectF& bounds) = 0;
     void addStop(const GradientStop& stop);
     void sortStops();
+    void inheritFrom(SVGGradient* parent);
+
+    virtual Gdiplus::Brush* createBrush(const Gdiplus::RectF& bounds) = 0;
 };
+
 
 #endif
