@@ -75,12 +75,16 @@ void SVGParser::parseShape(const std::string& shapeContent, SVGGroup* group) {
         }}
     };
 
+    logDebug("[PARSE] Checking shape content: " + shapeContent.substr(0, 50) + "...");
     for (const auto& [tag, parseFunc] : parserMap) {
         if (shapeContent.find("<" + tag) != std::string::npos) {
+            logDebug("[PARSE] Matched <" + tag + "> → calling " + tag + " parser");
             SVGElement* element = parseFunc(shapeContent);
             if (element != nullptr) {
+                logDebug("[PARSE] Parsed <" + tag + "> successfully, adding to group");
                 group->addElement(element);
             }
+            else  logDebug("[PARSE] Failed to parse <" + tag + ">");
             break;  // tìm thấy tag rồi thì dừng
         }
     }
@@ -91,6 +95,8 @@ void SVGParser::parseShape(const std::string& shapeContent, SVGGroup* group) {
 SVGGroup* SVGParser::parseFile(const std::string& filename) {
     std::ifstream file(filename);
     if (!file.is_open()) return nullptr;
+
+    logDebug("[DEBUG] [PARSE] Enter parseFile, file=" + filename);
 
     // Đọc file để biết có bao nhiêu dòng
     std::vector<std::string> lines;
@@ -121,10 +127,14 @@ SVGGroup* SVGParser::parseFile(const std::string& filename) {
     std::smatch defsMatch;
     std::regex defsRegex(R"(<defs[^>]*>([\s\S]*?)<\/defs>)");
     if (std::regex_search(svgContent, defsMatch, defsRegex)) {
+        logDebug("[DEBUG] [PARSE] Found <defs>, pass to SVGGradientParser");
         std::string defsContent = defsMatch[1].str();
         SVGGradientParser::parseDefs(defsContent);
     }
-    std::regex tagRegex(R"((<rect[\s\S]*?\/?>)|(<circle[\s\S]*?\/?>)|(<ellipse[\s\S]*?\/?>)|(<line[\s\S]*?\/?>)|(<text[\s\S]*?<\/text>)|(<path[\s\S]*?\/?>)|(<polyline[\s\S]*?\/?>)|(<polygon[\s\S]*?\/?>)|(<g[\s\S]*?<\/g>))");
+
+    std::regex tagRegex(
+        R"((<rect[\s\S]*?\/?>)|(<circle[\s\S]*?\/?>)|(<ellipse[\s\S]*?\/?>)|(<line(?!ar)[\s\S]*?\/?>)|(<text[\s\S]*?<\/text>)|(<path[\s\S]*?\/?>)|(<polyline[\s\S]*?\/?>)|(<polygon[\s\S]*?\/?>)|(<g[\s\S]*?<\/g>))"
+    );
     auto tagsBegin = std::sregex_iterator(svgContent.begin(), svgContent.end(), tagRegex);
     auto tagsEnd = std::sregex_iterator();
 
@@ -132,6 +142,7 @@ SVGGroup* SVGParser::parseFile(const std::string& filename) {
 
     // CASE 1: file 1 dòng dùng regex iterator
     if (lines.size() <= 1) {
+        logDebug("[DEBUG] [PARSE] Case 1: Single-line SVG");
         for (auto it = tagsBegin; it != tagsEnd; ++it) {
             std::string shape = it->str();
             SVGParser parser;
@@ -140,6 +151,7 @@ SVGGroup* SVGParser::parseFile(const std::string& filename) {
     }
     // CASE 2: file nhiều dòng
     else {
+        logDebug("[DEBUG] [PARSE] Case 2: Multi-line SVG");
         std::ifstream file3(filename);
         if (!file3.is_open()) return nullptr;
 
@@ -148,6 +160,8 @@ SVGGroup* SVGParser::parseFile(const std::string& filename) {
                 continue;
 
             if (line.find("<g") != std::string::npos) {
+                logDebug("[DEBUG] [PARSE] Parse <g> block with nested children");
+
                 std::string fullGBlock = line;
                 int openG = 1;
                 while (openG > 0 && std::getline(file3, line)) {
@@ -159,10 +173,19 @@ SVGGroup* SVGParser::parseFile(const std::string& filename) {
                 parser.parseShape(fullGBlock, group);
                 continue;
             }
+            if (line.find("<linearGradient") != std::string::npos ||
+                line.find("<radialGradient") != std::string::npos ||
+                line.find("<stop") != std::string::npos) {
+                // bỏ qua hoặc để cho SVGGradientParser xử lý
+                logDebug("[DEBUG] [PARSE] Gradient found: " + line);
+                continue;
+            }
             SVGParser parser;
+            logDebug("[DEBUG] [PARSE] calling parse Shape");
             parser.parseShape(line, group);
         }
     }
 
+    logDebug("[DEBUG] [PARSE] Exit parseFile, totalChildren=" + std::to_string(group->childCount()));
     return group;
 }

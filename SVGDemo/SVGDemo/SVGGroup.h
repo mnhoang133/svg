@@ -23,6 +23,8 @@ public:
     // Gọi render cho toàn bộ phần tử con
     void render(Gdiplus::Graphics* graphics) override;
 
+    int childCount();
+
     // Hủy các phần tử nếu cần
     ~SVGGroup();
 };

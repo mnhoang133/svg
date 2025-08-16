@@ -33,3 +33,8 @@ SVGGroup::~SVGGroup() {
     }
     children.clear(); // Xoa danh sach sau khi giai phong
 }
+
+int SVGGroup::childCount()
+{
+    return children.size();
+}
