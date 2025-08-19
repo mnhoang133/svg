@@ -69,7 +69,7 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, PSTR, INT iCmdShow)
     GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
 
     // Parse file SVG thanh cay SVGGroup
-    rootGroup = SVGParser::parseFile("Instagram_logo_2016.svg");
+    rootGroup = SVGParser::parseFile("Firefox_logo,_2019.svg");
 
     // Dang ky lop cua so
     wndClass.style = CS_HREDRAW | CS_VREDRAW;

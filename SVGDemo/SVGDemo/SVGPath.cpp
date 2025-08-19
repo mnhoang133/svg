@@ -13,6 +13,39 @@
 using namespace Gdiplus;
 using namespace ParserUtils;
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+RectF safeBounds(GraphicsPath& path) {
+    RectF bounds;
+    path.GetBounds(&bounds);
+
+    if (bounds.Width > 0 && bounds.Height > 0) {
+        return bounds;
+    }
+
+    INT count = path.GetPointCount();
+    if (count == 0) {
+        return RectF(0, 0, 0, 0);
+    }
+
+    std::vector<PointF> pts(count);
+    path.GetPathPoints(pts.data(), count);
+
+    float minX = FLT_MAX, minY = FLT_MAX;
+    float maxX = -FLT_MAX, maxY = -FLT_MAX;
+    for (int i = 0; i < count; i++) {
+        if (pts[i].X < minX) minX = pts[i].X;
+        if (pts[i].Y < minY) minY = pts[i].Y;
+        if (pts[i].X > maxX) maxX = pts[i].X;
+        if (pts[i].Y > maxY) maxY = pts[i].Y;
+    }
+
+    return RectF(minX, minY, maxX - minX, maxY - minY);
+}
+
+
 static void skipSeparators(const std::wstring& s, size_t& i) {
     while (i < s.size() && (iswspace(s[i]) || s[i] == L',')) ++i;
 }
@@ -213,6 +246,43 @@ void SVGPath::render(Graphics* graphics) {
             hasPrevCtrl = false; hasPrevQuad = false;
             break;
         }
+        case L'A': { // elliptical arc
+            while (true) {
+                size_t save = i;
+                float rx, ry, xAxisRotation, x2, y2;
+                int largeArcFlag, sweepFlag;
+                if (parseNumber(s, i, rx) && parseNumber(s, i, ry) &&
+                    parseNumber(s, i, xAxisRotation) &&
+                    parseFlag(s, i, largeArcFlag) &&
+                    parseFlag(s, i, sweepFlag) &&
+                    parseNumber(s, i, x2) && parseNumber(s, i, y2)) {
+
+                    if (relative) { x2 += x; y2 += y; }
+
+                    // convert arc to cubic beziers
+                    std::vector<PointF> beziers;
+                    arcToBeziers(x, y, x2, y2, rx, ry,
+                        xAxisRotation * (float)M_PI / 180.0f,
+                        largeArcFlag != 0, sweepFlag != 0,
+                        beziers);
+
+                    for (size_t k = 0; k + 3 < beziers.size(); k += 3) {
+                        path.AddBezier(
+                            beziers[k].X, beziers[k].Y,
+                            beziers[k + 1].X, beziers[k + 1].Y,
+                            beziers[k + 2].X, beziers[k + 2].Y,
+                            beziers[k + 3].X, beziers[k + 3].Y
+                        );
+                    }
+
+                    x = x2; y = y2;
+                    hasPrevCtrl = false; hasPrevQuad = false;
+                }
+                else { i = save; break; }
+            }
+            break;
+        }
+
         default: // skip unsupported or unknown command
             ++i;
             break;
@@ -223,9 +293,13 @@ void SVGPath::render(Graphics* graphics) {
     if (doFill) {
         if (!fillUrl.empty()) {
             // Tính bounding box để tạo brush gradient
-            RectF bounds;
-            path.GetBounds(&bounds);
-            logDebug("[PATH RENDER]: FILLURL: " + fillUrl);
+            RectF bounds = safeBounds(path);
+            logDebug("[PATH RENDER]: FILLURL: " + fillUrl +
+                " Bounds=" + std::to_string(bounds.X) + "," +
+                std::to_string(bounds.Y) + "," +
+                std::to_string(bounds.Width) + "," +
+                std::to_string(bounds.Height));
+
             Brush* gradientBrush = GradientManager::createBrushFromUrl(fillUrl, bounds);
             if (gradientBrush) {
                 graphics->FillPath(gradientBrush, &path);

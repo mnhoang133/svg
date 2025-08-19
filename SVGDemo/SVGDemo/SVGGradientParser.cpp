@@ -16,7 +16,6 @@ using namespace AttributeParserUtils;
 using namespace ParserUtils;
 
 void SVGGradientParser::parseDefs(const std::string& defsContent) {
-    logDebug("[GRADIENT] Enter parseDefs, content length=" + std::to_string(defsContent.size()));
 
     // Regex để tìm tất cả linearGradient tags
     std::regex linearGradientRegex(R"(<linearGradient[\s\S]*?</linearGradient>)");
