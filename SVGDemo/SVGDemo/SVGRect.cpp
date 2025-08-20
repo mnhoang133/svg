@@ -1,4 +1,4 @@
-﻿#include "stdafx.h"                      // Luon de dau neu dung precompiled header
+﻿#include "stdafx.h"                     
 #include "SVGRect.h"
 #include "Point.h"
 

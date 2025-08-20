@@ -27,4 +27,4 @@ public:
     void render(Gdiplus::Graphics* graphics) override;
 };
 
-#endif // SVGTEXT_H
+#endif 

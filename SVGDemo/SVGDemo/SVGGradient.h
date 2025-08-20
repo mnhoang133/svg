@@ -12,9 +12,8 @@
 
 using namespace Gdiplus;
 
-// ==========================
+
 // GradientStop
-// ==========================
 struct GradientStop {
     float offset;
     Gdiplus::Color color;
@@ -24,9 +23,8 @@ struct GradientStop {
     GradientStop(float off, Gdiplus::Color col, float op = 1.0f) : offset(off), color(col), opacity(op) {}
 };
 
-// ==========================
+
 // SVGGradient: base class
-// ==========================
 class SVGGradient {
 public:
     std::string id;

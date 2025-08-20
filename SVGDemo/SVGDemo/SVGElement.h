@@ -55,9 +55,9 @@ public:
            Gdiplus::REAL elements[6];
            other.GetElements(elements);
            transform.SetElements(
-               elements[0], elements[1],  // m11, m12
-               elements[2], elements[3],  // m21, m22
-               elements[4], elements[5]   // dx, dy
+               elements[0], elements[1], 
+               elements[2], elements[3],  
+               elements[4], elements[5]  
            );
        }
 

@@ -50,11 +50,5 @@ void SVGG::render(Gdiplus::Graphics* graphics) {
     graphics->Restore(state);
 }
 
-// Destructor: không xóa con ở đây, parser quản lý bộ nhớ
-SVGG::~SVGG() {
-    // Nếu muốn tự quản lý bộ nhớ:
-    // for (SVGElement* child : children) {
-    //     delete child;
-    // }
-    // children.clear();
-}
+
+SVGG::~SVGG() {}

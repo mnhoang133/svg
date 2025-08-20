@@ -1,4 +1,4 @@
-﻿#include "stdafx.h"                  // Luon de dau neu dung precompiled header
+﻿#include "stdafx.h"                 
 #include "SVGPolyline.h"
 #include <gdiplus.h>
 #include <cmath>

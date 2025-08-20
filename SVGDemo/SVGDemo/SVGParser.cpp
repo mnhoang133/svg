@@ -30,7 +30,6 @@ using namespace Gdiplus;
 using namespace ParserUtils;
 using namespace AttributeParserUtils;
 
-// Trong SVGParser.cpp (hoặc .h nếu bạn muốn khai báo)
 
 // Hàm này nhận 1 đoạn string là 1 tag svg (ví dụ: <circle cx="..." ... />)
 // và con trỏ group để thêm element parse được vào
@@ -82,7 +81,7 @@ void SVGParser::parseShape(const std::string& shapeContent, SVGGroup* group) {
             if (element != nullptr) {
                 group->addElement(element);
             }
-            else  logDebug("[PARSE] Failed to parse <" + tag + ">");
+            
             break;  // tìm thấy tag rồi thì dừng
         }
     }
@@ -94,7 +93,6 @@ SVGGroup* SVGParser::parseFile(const std::string& filename) {
     std::ifstream file(filename);
     if (!file.is_open()) return nullptr;
 
-    logDebug("[DEBUG] [PARSE] Enter parseFile, file=" + filename);
 
     // Đọc file để biết có bao nhiêu dòng
     std::vector<std::string> lines;
@@ -121,11 +119,10 @@ SVGGroup* SVGParser::parseFile(const std::string& filename) {
         (unsigned char)svgContent[2] == 0xBF)
         svgContent = svgContent.substr(3);
 
-    // ==== Khai báo regex iterator ở đây ====
+    //Khai báo regex iterator 
     std::smatch defsMatch;
     std::regex defsRegex(R"(<defs[^>]*>([\s\S]*?)<\/defs>)");
     if (std::regex_search(svgContent, defsMatch, defsRegex)) {
-        logDebug("[DEBUG] [PARSE] Found <defs>, pass to SVGGradientParser");
         std::string defsContent = defsMatch[1].str();
         SVGGradientParser::parseDefs(defsContent);
     }
@@ -140,7 +137,6 @@ SVGGroup* SVGParser::parseFile(const std::string& filename) {
 
     // CASE 1: file 1 dòng dùng regex iterator
     if (lines.size() <= 1) {
-        logDebug("[DEBUG] [PARSE] Case 1: Single-line SVG");
         for (auto it = tagsBegin; it != tagsEnd; ++it) {
             std::string shape = it->str();
             SVGParser parser;
@@ -184,6 +180,5 @@ SVGGroup* SVGParser::parseFile(const std::string& filename) {
         }
     }
 
-    logDebug("[DEBUG] [PARSE] Exit parseFile, totalChildren=" + std::to_string(group->childCount()));
     return group;
 }

@@ -1,4 +1,4 @@
-﻿#include "stdafx.h"             // Luon de dau neu dung precompiled headers
+﻿#include "stdafx.h"          
 
 #include "SVGText.h"
 #include "Point.h"

@@ -29,4 +29,4 @@ public:
     ~SVGGroup();
 };
 
-#endif // SVGGROUP_H
+#endif 

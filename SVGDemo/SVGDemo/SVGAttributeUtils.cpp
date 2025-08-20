@@ -50,7 +50,6 @@ Gdiplus::Color AttributeParserUtils::parseColor(const std::string& s) {
     if (str.empty() || str == "none")
         return Gdiplus::Color(0, 0, 0, 0);  // Trong suốt
 
-    // ===== Hex color =====
     if (str[0] == '#') {
         if (str.length() == 4) {
             // #RGB => #RRGGBB
@@ -70,7 +69,7 @@ Gdiplus::Color AttributeParserUtils::parseColor(const std::string& s) {
         }
     }
 
-    // ===== rgb(...) hoặc rgba(...) =====
+    // rgb(...) hoặc rgba(...) 
     if (str.find("rgb(") == 0 || str.find("rgba(") == 0) {
         size_t start = str.find("("), end = str.find(")");
         if (start == std::string::npos || end == std::string::npos || end <= start)
@@ -101,7 +100,7 @@ Gdiplus::Color AttributeParserUtils::parseColor(const std::string& s) {
         return Gdiplus::Color(a, r, g, b);
     }
 
-    // ===== Tên màu phổ biến =====
+    // Tên màu
     if (str == "black")         return Gdiplus::Color(255, 0, 0, 0);
     else if (str == "white")         return Gdiplus::Color(255, 255, 255, 255);
     else if (str == "red")           return Gdiplus::Color(255, 255, 0, 0);
@@ -146,7 +145,7 @@ std::string AttributeParserUtils::extractAttr(const std::string& tag, const std:
 
             std::string result = tag.substr(start, end - start);
 
-            //  cleanup ở đây
+           
             while (!result.empty() && 
                    (isspace((unsigned char)result.back()) ||
                     result.back() == '/' || result.back() == '>'))
@@ -157,13 +156,13 @@ std::string AttributeParserUtils::extractAttr(const std::string& tag, const std:
         pos = tag.find(searchEq, pos + 1);
     }
 
-    // --- Case 2: attr:... (ví dụ trong style="fill:...")
+    // --- Case 2: attr:... 
     std::regex styleRegex(attr + R"(\s*:\s*([^;]+))");
     std::smatch match;
     if (std::regex_search(tag, match, styleRegex)) {
         std::string result = match[1].str();
 
-        //  cleanup ở đây luôn
+        
         while (!result.empty() && 
                (isspace((unsigned char)result.back()) ||
                 result.back() == '/' || result.back() == '>'))

@@ -29,5 +29,5 @@ public:
     const std::string& getFillUrl() const { return fillUrl; }
 };
 
-#endif // SVGPATH_H
+#endif 
 

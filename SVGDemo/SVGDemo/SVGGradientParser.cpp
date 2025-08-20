@@ -28,8 +28,7 @@ void SVGGradientParser::parseDefs(const std::string& defsContent) {
         if (gradient && !gradient->id.empty()) {
             GradientManager::addGradient(gradient->id, gradient);
             GradientManager::resolveAllGradients();
-            logDebug("gradient " + gradient->id + " stops=" + std::to_string(gradient->stops.size()));
-        } else  logDebug("[GRADIENT] Failed to parse linearGradient");
+        }
     }
 
     // Regex để tìm tất cả radialGradient tags
@@ -46,9 +45,8 @@ void SVGGradientParser::parseDefs(const std::string& defsContent) {
             GradientManager::addGradient(gradient->id, gradient);
             GradientManager::resolveAllGradients();
 
-            logDebug("gradient " + gradient->id + " stops=" + std::to_string(gradient->stops.size()));
+           
         }
-        else  logDebug("[GRADIENT] Failed to parse radialGradient");
     }
 
 

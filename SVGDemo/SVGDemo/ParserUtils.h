@@ -8,7 +8,7 @@
 namespace ParserUtils 
 {
 	int clampChannel(int value);
-	void logDebug(const std::string& msg);
+
 	float safeParseFloat(const std::string& str, float defaultValue = 0.0f);
 	int safeParseInt(const std::string& str, int defaultValue = 0);
 	Gdiplus::Color applyOpacity(const Gdiplus::Color& color, float opacity);
@@ -49,4 +49,4 @@ namespace ParserUtils
 
 }
 
-#endif // !PARSERUTILS_h
+#endif 

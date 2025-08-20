@@ -46,7 +46,6 @@ VOID OnPaint(HDC hdc)
     graphics.TranslateTransform((REAL)-cursorPos.x, (REAL)-cursorPos.y);
 
     // Ve SVG neu co
-    logDebug("[MAIN] Trigger render (WM_PAINT)");
     if (rootGroup)
     {
         rootGroup->render(&graphics);
@@ -65,7 +64,6 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, PSTR, INT iCmdShow)
     ULONG_PTR gdiplusToken;
 
     // Khoi tao GDI+
-    logDebug("[MAIN] Start parsing SVG file: Instagram_logo_2016.svg");
     GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
 
     // Parse file SVG thanh cay SVGGroup

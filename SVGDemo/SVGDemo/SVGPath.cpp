@@ -294,11 +294,6 @@ void SVGPath::render(Graphics* graphics) {
         if (!fillUrl.empty()) {
             // Tính bounding box để tạo brush gradient
             RectF bounds = safeBounds(path);
-            logDebug("[PATH RENDER]: FILLURL: " + fillUrl +
-                " Bounds=" + std::to_string(bounds.X) + "," +
-                std::to_string(bounds.Y) + "," +
-                std::to_string(bounds.Width) + "," +
-                std::to_string(bounds.Height));
 
             Brush* gradientBrush = GradientManager::createBrushFromUrl(fillUrl, bounds);
             if (gradientBrush) {

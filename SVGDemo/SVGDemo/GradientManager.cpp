@@ -46,7 +46,6 @@ Brush* GradientManager::createBrushFromUrl(const std::string& url, const RectF& 
         }
     }
 
-    // Fallback to solid color
     return new SolidBrush(Color(255, 0, 0, 0));
 }
 
@@ -63,7 +62,6 @@ void GradientManager::resolveGradient(const std::string& id, std::unordered_set<
         if (parent) {
             resolveGradient(refId, visited); //  resolve cha trước
             grad->inheritFrom(parent);
-            logDebug("  -> after inherit, " + id + " stops=" + std::to_string(grad->stops.size()));
         }
     }
 }

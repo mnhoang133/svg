@@ -1,4 +1,4 @@
-﻿#include "stdafx.h"                     // Luon de dau neu dung precompiled header
+﻿#include "stdafx.h"                     
 #include "SVGPolygon.h"
 #include <windows.h>
 #include <objidl.h>

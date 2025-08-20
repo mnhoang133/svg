@@ -13,4 +13,4 @@ public:
 	virtual ~IShapeParser() = default;
 };
 
-#endif // !IShapeParser_h
+#endif 

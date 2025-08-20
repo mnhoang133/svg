@@ -1,7 +1,7 @@
-﻿#include "stdafx.h"           // luon de dau tien neu xai precompiled header
+﻿#include "stdafx.h"           
 
 #include "SVGGroup.h"
-#include "SVGElement.h"       // backup neu .cpp can dung kieu SVGElement*
+#include "SVGElement.h"       // backup
 #include <gdiplus.h>          // can de dung Gdiplus::Graphics
 
 using namespace Gdiplus;

@@ -9,4 +9,4 @@ public:
     SVGElement* parse(const std::string& line) const override;
 };
 
-#endif // 
+#endif 

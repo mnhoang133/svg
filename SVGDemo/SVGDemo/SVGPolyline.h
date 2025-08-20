@@ -26,4 +26,4 @@ public:
     void render(Gdiplus::Graphics* graphics) override;
 };
 
-#endif // SVGPOLYLINE_H
+#endif 

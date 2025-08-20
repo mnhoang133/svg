@@ -24,13 +24,7 @@ int  ParserUtils::clampChannel(int value) {
     return value;
 }
 
-void  ParserUtils::logDebug(const std::string& msg) {
-    std::ofstream log("log.txt", std::ios::app);
-    log << "[DEBUG] " << msg << "\n";
-}
 
-
-// ====== Helper: Safe parse float/int =======
 float  ParserUtils::safeParseFloat(const std::string& str, float defaultValue) {
     try {
         if (str.empty()) return defaultValue;

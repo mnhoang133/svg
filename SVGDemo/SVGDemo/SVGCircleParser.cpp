@@ -16,7 +16,6 @@ using namespace Gdiplus;
 
 SVGElement* SVGCircleParser::parse(const std::string& line) const
 {
-    logDebug(line);
     float cx = safeParseFloat(extractAttr(line, "cx"), 0.0f);
     float cy = safeParseFloat(extractAttr(line, "cy"), 0.0f);
     float r = safeParseFloat(extractAttr(line, "r"), 0.0f);
@@ -33,23 +32,19 @@ SVGElement* SVGCircleParser::parse(const std::string& line) const
     Color fill = Color(255, 0, 0, 0);
     std::string fillUrl;
 
-    logDebug("check fill str:" + fillStr);
     if (!fillStr.empty() && fillStr != "none") {
         if (SVGGradientParser::isFillGradientUrl(fillStr)) {
             fillUrl = fillStr;
-            logDebug("[circle PARSER] FILL: " + fillUrl);
         }
 
     }
 
     if (fillStr[0] == '#') {
         fill = applyOpacity(parseColor(fillStr), fillOpacity);
-        logDebug("[circle PARSER] FILL: solid color " + fillStr);
     }
     else {
         // fallback: đen đặc
         fill = Color(255, 0, 0, 0);
-        logDebug("[circle PARSER] FILL: default black");
     }
     Color stroke = strokeStr.empty() || strokeStr == "none" ? Color(0, 0, 0, 0) : applyOpacity(parseColor(strokeStr), strokeOpacity);
 

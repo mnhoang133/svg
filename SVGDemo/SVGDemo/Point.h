@@ -1,4 +1,4 @@
-﻿// Point.h
+﻿
 #ifndef Point_h
 #define Point_h
 
@@ -16,8 +16,6 @@ namespace svg
             x += dx;
             y += dy;
         }
-
-        // Có thể thêm các hàm như rotate(), distanceTo() sau nếu cần
     };
 }
 

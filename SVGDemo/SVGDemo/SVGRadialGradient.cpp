@@ -49,10 +49,7 @@ Brush* SVGRadialGradient::createBrush(const RectF& bounds) {
     int h = (int)bounds.Height;
     Bitmap* bmp = new Bitmap(w, h, PixelFormat32bppARGB);
 
-    logDebug("SSSSSSSSS[RADIAL] id=" + id + " units=" + gradientUnits +
-        " cx=" + std::to_string(actualCx) +
-        " cy=" + std::to_string(actualCy) +
-        " r=" + std::to_string(actualR));
+ 
 
 
     for (int y = 0; y < h; y++) {

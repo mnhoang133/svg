@@ -9,4 +9,4 @@ public:
     SVGElement* parse(const std::string& block) const override;
 };
 
-#endif // !SVGCIRCLEPARSER_H
+#endif 

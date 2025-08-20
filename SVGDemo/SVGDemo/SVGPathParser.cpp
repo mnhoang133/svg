@@ -16,8 +16,6 @@ using namespace Gdiplus;
 
 SVGElement* SVGPathParser::parse(const std::string& line) const
 {
-    logDebug(line);
-
     std::string d = extractAttr(line, "d");
     std::string fillStr = extractAttr(line, "fill");
     std::string strokeStr = extractAttr(line, "stroke");
@@ -30,20 +28,20 @@ SVGElement* SVGPathParser::parse(const std::string& line) const
     Color fill = Color(255, 0, 0, 0);
     std::string fillUrl;
 
-    logDebug("check fill str:" + fillStr);
+   
     if (!fillStr.empty() && fillStr != "none") {
         if (SVGGradientParser::isFillGradientUrl(fillStr)) {
             fillUrl = fillStr;
-            logDebug("[PATH PARSER] FILL: " + fillUrl);
+           
         }
         else if (fillStr[0] == '#') {
             fill = applyOpacity(parseColor(fillStr), fillOpacity);
-            logDebug("[PATH PARSER] FILL: solid color " + fillStr);
+            
         }
         else {
             // fallback: đen đặc
             fill = Color(255, 0, 0, 0);
-            logDebug("[PATH PARSER] FILL: default black");
+            
         }
 
     }

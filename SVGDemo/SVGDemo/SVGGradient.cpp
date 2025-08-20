@@ -16,7 +16,7 @@ using namespace Gdiplus;
 using namespace AttributeParserUtils;
 using namespace ParserUtils;
 
-// Static member initialization
+
 std::map<std::string, SVGGradient*> GradientManager::gradients;
 
 // SVGGradient methods
