@@ -3,6 +3,9 @@
 #include <objidl.h>
 #include <gdiplus.h>
 #include <vector>
+#include <iostream>
+#include <filesystem>
+#include <string>
 
 #include "ParserUtils.h"
 #include "SVGParser.h"
@@ -11,6 +14,7 @@
 
 using namespace Gdiplus;
 using namespace ParserUtils;
+namespace fs = std::filesystem;
 
 #pragma comment (lib,"Gdiplus.lib")
 
@@ -24,52 +28,87 @@ float rotationAngle = 0.0f;
 // Vi tri chuot hien tai (dung lam tam zoom)
 POINT cursorPos = { 0, 0 };
 
-// Ham ve duoc goi khi WM_PAINT
+// Ham ve
 VOID OnPaint(HDC hdc)
 {
     Graphics graphics(hdc);
 
-    // Lay kich thuoc cua cua so ve
     RECT rect;
     GetClientRect(WindowFromDC(hdc), &rect);
     int cx = (rect.right - rect.left) / 2;
     int cy = (rect.bottom - rect.top) / 2;
 
-    // Di chuyen tam quay ve tam cua so
     graphics.TranslateTransform((REAL)cx, (REAL)cy);
     graphics.RotateTransform(rotationAngle);
     graphics.TranslateTransform((REAL)-cx, (REAL)-cy);
 
-    // Zoom quanh vi tri chuot
     graphics.TranslateTransform((REAL)cursorPos.x, (REAL)cursorPos.y);
     graphics.ScaleTransform(zoomFactor, zoomFactor);
     graphics.TranslateTransform((REAL)-cursorPos.x, (REAL)-cursorPos.y);
 
-    // Ve SVG neu co
-    if (rootGroup)
-    {
+    if (rootGroup) {
         rootGroup->render(&graphics);
     }
 }
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
+// Hàm chọn file SVG từ console
+std::string SelectSVGFile() {
+    std::vector<std::string> svgFiles;
+
+    for (auto& p : fs::directory_iterator(".")) {
+        if (p.path().extension() == ".svg") {
+            svgFiles.push_back(p.path().filename().string());
+        }
+    }
+
+    if (svgFiles.empty()) {
+        std::cout << "No SVG files found in current directory." << std::endl;
+        return "";
+    }
+
+    std::cout << "Available SVG files:\n";
+    for (size_t i = 0; i < svgFiles.size(); ++i) {
+        std::cout << i + 1 << ". " << svgFiles[i] << "\n";
+    }
+
+    int choice;
+    std::cout << "Select file number to open: ";
+    std::cin >> choice;
+
+    if (choice < 1 || choice >(int)svgFiles.size()) {
+        std::cout << "Invalid choice." << std::endl;
+        return "";
+    }
+
+    return svgFiles[choice - 1];
+}
+
 // Ham chinh WinMain
 INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, PSTR, INT iCmdShow)
 {
-    HWND hWnd;
-    MSG msg;
-    WNDCLASS wndClass;
+    // Tạo console để nhập dữ liệu
+    AllocConsole();
+    FILE* fp;
+    freopen_s(&fp, "CONIN$", "r", stdin);
+    freopen_s(&fp, "CONOUT$", "w", stdout);
+
+    // Hỏi người dùng chọn file SVG
+    std::string filename = SelectSVGFile();
+    if (filename.empty()) {
+        MessageBox(NULL, TEXT("No SVG selected!"), TEXT("Error"), MB_OK | MB_ICONERROR);
+        return 0;
+    }
+
     GdiplusStartupInput gdiplusStartupInput;
     ULONG_PTR gdiplusToken;
-
-    // Khoi tao GDI+
     GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
 
-    // Parse file SVG thanh cay SVGGroup
-    rootGroup = SVGParser::parseFile("Firefox_logo,_2019.svg");
+    // Parse file SVG được chọn
+    rootGroup = SVGParser::parseFile(filename);
 
-    // Dang ky lop cua so
+    WNDCLASS wndClass;
     wndClass.style = CS_HREDRAW | CS_VREDRAW;
     wndClass.lpfnWndProc = WndProc;
     wndClass.cbClsExtra = 0;
@@ -80,11 +119,9 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, PSTR, INT iCmdShow)
     wndClass.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
     wndClass.lpszMenuName = NULL;
     wndClass.lpszClassName = TEXT("SVGWindow");
-
     RegisterClass(&wndClass);
 
-    // Tao cua so
-    hWnd = CreateWindow(
+    HWND hWnd = CreateWindow(
         TEXT("SVGWindow"),
         TEXT("SVG Viewer"),
         WS_OVERLAPPEDWINDOW,
@@ -96,23 +133,20 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, PSTR, INT iCmdShow)
     ShowWindow(hWnd, iCmdShow);
     UpdateWindow(hWnd);
 
-    // Vong lap xu ly message
+    MSG msg;
     while (GetMessage(&msg, NULL, 0, 0)) {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
 
-    // Giai phong GDI+
     GdiplusShutdown(gdiplusToken);
-
-    // Giai phong bo nho SVG
     delete rootGroup;
     rootGroup = nullptr;
 
     return static_cast<int>(msg.wParam);
 }
 
-// Xu ly cac su kien cua so
+// Xu ly su kien
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
@@ -120,34 +154,27 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_KEYDOWN:
         switch (wParam)
         {
-        case VK_LEFT:  // Phim mui ten trai -> xoay goc am
+        case VK_LEFT:
             rotationAngle -= 5.0f;
-            InvalidateRect(hWnd, NULL, TRUE); // Yeu cau ve lai
+            InvalidateRect(hWnd, NULL, TRUE);
             break;
-
-        case VK_RIGHT: // Phim mui ten phai -> xoay goc duong
+        case VK_RIGHT:
             rotationAngle += 5.0f;
             InvalidateRect(hWnd, NULL, TRUE);
             break;
         }
         break;
     case WM_MOUSEWHEEL:
-    {
-        // Lay vi tri chuot tren man hinh roi chuyen ve toa do client
         GetCursorPos(&cursorPos);
         ScreenToClient(hWnd, &cursorPos);
 
-        // Lay delta banh xe chuot
-        int delta = GET_WHEEL_DELTA_WPARAM(wParam);
-        if (delta > 0)
-            zoomFactor *= 1.1f; // Zoom in
+        if (GET_WHEEL_DELTA_WPARAM(wParam) > 0)
+            zoomFactor *= 1.1f;
         else
-            zoomFactor /= 1.1f; // Zoom out
+            zoomFactor /= 1.1f;
 
-        InvalidateRect(hWnd, NULL, TRUE); // Ve lai man hinh
+        InvalidateRect(hWnd, NULL, TRUE);
         break;
-    }
-
     case WM_PAINT:
     {
         PAINTSTRUCT ps;
@@ -157,7 +184,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         return 0;
     }
     case WM_DESTROY:
-        PostQuitMessage(0); // Thoat chuong trinh
+        PostQuitMessage(0);
         return 0;
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
